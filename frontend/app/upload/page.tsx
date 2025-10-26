@@ -1,0 +1,260 @@
+'use client'
+
+import { useState, useCallback } from 'react'
+import { Upload, FileText, X, Loader2, CheckCircle2 } from 'lucide-react'
+import { useDropzone } from 'react-dropzone'
+
+export default function UploadPage() {
+  const [files, setFiles] = useState<File[]>([])
+  const [jobDescription, setJobDescription] = useState('')
+  const [isProcessing, setIsProcessing] = useState(false)
+  const [uploadedFiles, setUploadedFiles] = useState<string[]>([])
+
+  const onDrop = useCallback((acceptedFiles: File[]) => {
+    setFiles(prev => [...prev, ...acceptedFiles])
+  }, [])
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: {
+      'application/pdf': ['.pdf']
+    },
+    multiple: true,
+    noClick: false,
+    noKeyboard: false
+  })
+
+  const removeFile = (index: number) => {
+    setFiles(prev => prev.filter((_, i) => i !== index))
+  }
+
+  const handleProcess = async () => {
+    if (files.length === 0 || !jobDescription.trim()) {
+      return
+    }
+
+    setIsProcessing(true)
+    // Simulate processing
+    setTimeout(() => {
+      setUploadedFiles(files.map(f => f.name))
+      setIsProcessing(false)
+    }, 2000)
+  }
+
+  const canProcess = files.length > 0 && jobDescription.trim().length > 0
+
+  return (
+    <div className="space-y-6 max-w-7xl">
+      {/* Page Header */}
+      <div>
+        <h1 className="text-4xl font-black text-text-light dark:text-text-dark">Upload and Match</h1>
+        <p className="text-slate-600 dark:text-slate-400 mt-2 text-base">
+          Upload resumes and paste a job description to find the best candidates.
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left Column - Upload & Job Description */}
+        <div className="lg:col-span-2 flex flex-col gap-6">
+          {/* Upload Area */}
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+            <div className="p-6">
+              <div
+                {...getRootProps()}
+                className={`relative flex flex-col items-center gap-6 rounded-xl border-2 border-dashed transition-all duration-200 px-6 py-12 cursor-pointer ${
+                  isDragActive
+                    ? 'border-primary bg-primary/5 scale-[0.98]'
+                    : 'border-gray-300 dark:border-gray-600 hover:border-primary/50 hover:bg-gray-50 dark:hover:bg-gray-700/50'
+                }`}
+              >
+                <input {...getInputProps()} />
+                <div className="flex items-center justify-center w-16 h-16 bg-primary/10 dark:bg-primary/20 rounded-full text-primary">
+                  <Upload className="w-8 h-8" />
+                </div>
+                <div className="flex flex-col items-center gap-2 text-center">
+                  <p className="text-lg font-bold text-text-light dark:text-white">
+                    {isDragActive ? 'Drop files here' : 'Upload Resumes'}
+                  </p>
+                  <p className="text-sm text-slate-600 dark:text-slate-400 max-w-md">
+                    {isDragActive
+                      ? 'Release to upload your files'
+                      : 'Drag & drop your PDF files here, or click to browse'}
+                  </p>
+                  <div className="mt-2 flex items-center gap-2 text-xs text-gray-500">
+                    <FileText className="w-4 h-4" />
+                    <span>PDF files only • Max 50 files</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* File List */}
+              {files.length > 0 && (
+                <div className="mt-6 space-y-2">
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="font-semibold text-sm text-gray-700 dark:text-gray-300">
+                      Uploaded Files ({files.length})
+                    </p>
+                    <button
+                      onClick={() => setFiles([])}
+                      className="text-xs text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 font-medium"
+                    >
+                      Clear All
+                    </button>
+                  </div>
+                  <div className="space-y-2 max-h-64 overflow-y-auto pr-2">
+                    {files.map((file, index) => (
+                      <div
+                        key={index}
+                        className="flex items-center justify-between p-3 rounded-lg bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 hover:border-primary/50 transition-colors group"
+                      >
+                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                          <div className="flex-shrink-0 w-10 h-10 bg-red-100 dark:bg-red-900/20 rounded-lg flex items-center justify-center">
+                            <FileText className="w-5 h-5 text-red-600 dark:text-red-400" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                              {file.name}
+                            </p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                              {(file.size / 1024).toFixed(1)} KB
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            removeFile(index)
+                          }}
+                          className="flex-shrink-0 p-1.5 hover:bg-red-100 dark:hover:bg-red-900/20 rounded-lg transition-colors group-hover:opacity-100 opacity-60"
+                          aria-label="Remove file"
+                        >
+                          <X className="w-4 h-4 text-red-600 dark:text-red-400" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Job Description */}
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+            <div className="space-y-3">
+              <label className="block text-sm font-bold text-text-light dark:text-white">
+                Job Description *
+              </label>
+              <textarea
+                value={jobDescription}
+                onChange={(e) => setJobDescription(e.target.value)}
+                placeholder="Paste the job description here. Include required skills, experience, and qualifications..."
+                className="w-full h-48 p-4 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-text-light dark:text-white placeholder-gray-400 dark:placeholder-gray-500 resize-none focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-transparent transition-all"
+              />
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                {jobDescription.length} characters
+              </p>
+            </div>
+          </div>
+
+          {/* Process Button */}
+          <button
+            onClick={handleProcess}
+            disabled={!canProcess || isProcessing}
+            className={`flex items-center justify-center gap-3 px-6 py-4 rounded-xl font-bold text-base shadow-lg transition-all duration-200 ${
+              canProcess && !isProcessing
+                ? 'bg-primary hover:bg-blue-700 text-white hover:shadow-xl hover:scale-[1.02] active:scale-[0.98]'
+                : 'bg-gray-300 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed'
+            }`}
+          >
+            {isProcessing ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin" />
+                Processing Documents...
+              </>
+            ) : (
+              <>
+                <CheckCircle2 className="w-5 h-5" />
+                Process Documents
+              </>
+            )}
+          </button>
+
+          {!canProcess && (
+            <div className="flex items-start gap-2 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+              <div className="flex-shrink-0 mt-0.5">
+                <svg className="w-5 h-5 text-yellow-600 dark:text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-yellow-800 dark:text-yellow-300">
+                  Please complete the following:
+                </p>
+                <ul className="mt-1 text-xs text-yellow-700 dark:text-yellow-400 list-disc list-inside space-y-0.5">
+                  {files.length === 0 && <li>Upload at least one resume</li>}
+                  {!jobDescription.trim() && <li>Provide a job description</li>}
+                </ul>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Right Column - Instructions & Tips */}
+        <div className="space-y-6">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+            <h3 className="text-lg font-bold mb-4 text-text-light dark:text-text-dark">How It Works</h3>
+            <ol className="space-y-4 text-sm">
+              {[
+                { num: 1, text: 'Upload one or more resumes in PDF format' },
+                { num: 2, text: 'Paste or type the job description' },
+                { num: 3, text: 'Click "Process Documents" to analyze' },
+                { num: 4, text: 'Get AI-powered match scores and insights' }
+              ].map((step) => (
+                <li key={step.num} className="flex gap-3">
+                  <span className="flex-shrink-0 w-7 h-7 rounded-full bg-primary text-white flex items-center justify-center text-xs font-bold">
+                    {step.num}
+                  </span>
+                  <span className="text-gray-700 dark:text-gray-300 pt-0.5">{step.text}</span>
+                </li>
+              ))}
+            </ol>
+          </div>
+
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+            <h3 className="text-lg font-bold mb-4 text-text-light dark:text-text-dark">Pro Tips</h3>
+            <ul className="space-y-3 text-sm">
+              {[
+                'Ensure resumes are in PDF format for best results',
+                'Include detailed job requirements for accurate matching',
+                'You can upload up to 50 resumes at once',
+                'Processing typically takes 1-2 minutes'
+              ].map((tip, index) => (
+                <li key={index} className="flex gap-2">
+                  <CheckCircle2 className="w-5 h-5 text-secondary flex-shrink-0" />
+                  <span className="text-gray-600 dark:text-gray-400">{tip}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {uploadedFiles.length > 0 && (
+            <div className="bg-gradient-to-br from-secondary/10 to-secondary/5 dark:from-secondary/20 dark:to-secondary/10 rounded-xl shadow-sm border-2 border-secondary/30 p-6">
+              <div className="flex items-start gap-3">
+                <div className="flex-shrink-0 w-10 h-10 bg-secondary rounded-full flex items-center justify-center">
+                  <CheckCircle2 className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-secondary mb-1">Processing Complete!</h3>
+                  <p className="text-sm text-gray-700 dark:text-gray-300">
+                    Successfully processed <strong>{uploadedFiles.length}</strong> resume{uploadedFiles.length > 1 ? 's' : ''}.
+                    Check the analytics page for detailed insights.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
