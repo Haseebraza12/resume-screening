@@ -1,7 +1,8 @@
 'use client'
 
-import { Search, Bell } from 'lucide-react'
+import { Search } from 'lucide-react'
 import Image from 'next/image'
+import { NotificationPanel } from '@/components/NotificationPanel'
 
 export function TopNav() {
   return (
@@ -17,13 +18,7 @@ export function TopNav() {
       </div>
       
       <div className="flex items-center gap-4">
-        <button className="relative flex cursor-pointer items-center justify-center rounded-full h-10 w-10 hover:bg-black/5 dark:hover:bg-white/5 text-text-light dark:text-text-dark">
-          <Bell className="w-5 h-5" />
-          <span className="absolute top-1 right-1.5 flex h-2.5 w-2.5">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-75" />
-            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-accent" />
-          </span>
-        </button>
+        <NotificationPanel />
         
         <div className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10 ring-2 ring-offset-2 ring-offset-card-light dark:ring-offset-card-dark ring-primary/50 relative overflow-hidden">
           <Image

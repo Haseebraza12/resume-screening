@@ -7,7 +7,10 @@ import {
   Upload, 
   Briefcase, 
   BarChart3, 
-  Settings 
+  Settings,
+  Search,
+  Star,
+  HelpCircle
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -32,11 +35,13 @@ function Logo() {
 }
 
 const navigation = [
-  { name: 'Home', href: '/dashboard', icon: LayoutDashboard },
-  { name: 'Upload Resumes', href: '/upload', icon: Upload },
-  { name: 'Job Postings', href: '/jobs', icon: Briefcase },
+  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+  { name: 'Upload', href: '/upload', icon: Upload },
+  { name: 'Search', href: '/jobs', icon: Search },
   { name: 'Analytics', href: '/analytics', icon: BarChart3 },
+  { name: 'Favorites', href: '/favorites', icon: Star },
   { name: 'Settings', href: '/settings', icon: Settings },
+  { name: 'Help', href: '/help', icon: HelpCircle },
 ]
 
 export function Sidebar() {
