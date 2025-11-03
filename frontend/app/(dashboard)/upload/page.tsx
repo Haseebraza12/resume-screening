@@ -1,17 +1,22 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import { Upload, FileText, X, Loader2, CheckCircle2 } from 'lucide-react'
+import { Upload, FileText, X, Loader2, CheckCircle2, ArrowRight } from 'lucide-react'
 import { useDropzone } from 'react-dropzone'
+import { resumeApi } from '@/lib/api'
+import Link from 'next/link'
 
 export default function UploadPage() {
   const [files, setFiles] = useState<File[]>([])
   const [jobDescription, setJobDescription] = useState('')
   const [isProcessing, setIsProcessing] = useState(false)
   const [uploadedFiles, setUploadedFiles] = useState<string[]>([])
+  const [error, setError] = useState<string | null>(null)
+  const [showSuccessNotification, setShowSuccessNotification] = useState(false)
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     setFiles(prev => [...prev, ...acceptedFiles])
+    setError(null) // Clear any previous errors
   }, [])
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -34,17 +39,42 @@ export default function UploadPage() {
     }
 
     setIsProcessing(true)
-    // Simulate processing
-    setTimeout(() => {
+    setError(null)
+    setShowSuccessNotification(false)
+    
+    try {
+      // Upload resumes to backend
+      const response = await resumeApi.uploadResumes(files)
+      
+      console.log('Upload response:', response.data)
+      
+      // Set uploaded files from response
       setUploadedFiles(files.map(f => f.name))
+      
+      // Show success notification
+      setShowSuccessNotification(true)
+      
+      // Clear files after successful upload
+      setFiles([])
+      setJobDescription('')
+      
+      // Auto-hide notification after 10 seconds
+      setTimeout(() => {
+        setShowSuccessNotification(false)
+      }, 10000)
+      
+    } catch (err: any) {
+      console.error('Upload error:', err)
+      setError(err.response?.data?.detail || 'Failed to upload resumes. Please try again.')
+    } finally {
       setIsProcessing(false)
-    }, 2000)
+    }
   }
 
   const canProcess = files.length > 0 && jobDescription.trim().length > 0
 
   return (
-    <div className="space-y-6 max-w-7xl">
+    <div className="space-y min-h-screen p-8 lg:p-12">
       {/* Page Header */}
       <div>
         <h1 className="text-4xl font-black text-text-light dark:text-text-dark">Upload and Match</h1>
@@ -197,6 +227,25 @@ export default function UploadPage() {
               </div>
             </div>
           )}
+
+          {/* Error Display */}
+          {error && (
+            <div className="flex items-start gap-2 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+              <div className="flex-shrink-0 mt-0.5">
+                <svg className="w-5 h-5 text-red-600 dark:text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-red-800 dark:text-red-300">
+                  Upload Failed
+                </p>
+                <p className="mt-1 text-xs text-red-700 dark:text-red-400">
+                  {error}
+                </p>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Right Column - Instructions & Tips */}
@@ -243,18 +292,68 @@ export default function UploadPage() {
                 <div className="flex-shrink-0 w-10 h-10 bg-secondary rounded-full flex items-center justify-center">
                   <CheckCircle2 className="w-6 h-6 text-white" />
                 </div>
-                <div>
+                <div className="flex-1">
                   <h3 className="text-lg font-bold text-secondary mb-1">Processing Complete!</h3>
-                  <p className="text-sm text-gray-700 dark:text-gray-300">
+                  <p className="text-sm text-gray-700 dark:text-gray-300 mb-3">
                     Successfully processed <strong>{uploadedFiles.length}</strong> resume{uploadedFiles.length > 1 ? 's' : ''}.
-                    Check the analytics page for detailed insights.
+                    View detailed insights and analytics.
                   </p>
+                  <Link
+                    href="/analytics"
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-secondary hover:bg-green-700 text-white text-sm font-bold rounded-lg transition-all duration-200 hover:scale-105 active:scale-95"
+                  >
+                    Go to Analytics
+                    <ArrowRight className="w-4 h-4" />
+                  </Link>
                 </div>
               </div>
             </div>
           )}
         </div>
       </div>
+
+      {/* Success Notification - Fixed position */}
+      {showSuccessNotification && (
+        <div className="fixed bottom-6 right-6 z-50 animate-fade-in">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl border-2 border-green-500 p-6 max-w-md">
+            <div className="flex items-start gap-4">
+              <div className="flex-shrink-0 w-12 h-12 bg-green-500 rounded-full flex items-center justify-center">
+                <CheckCircle2 className="w-7 h-7 text-white" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-bold text-green-600 dark:text-green-400 mb-2">
+                  🎉 Resumes Processed Successfully!
+                </h3>
+                <p className="text-sm text-gray-700 dark:text-gray-300 mb-4">
+                  <strong>{uploadedFiles.length}</strong> resume{uploadedFiles.length > 1 ? 's' : ''} uploaded and analyzed. 
+                  View detailed insights and analytics now.
+                </p>
+                <div className="flex gap-3">
+                  <Link
+                    href="/analytics"
+                    className="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-blue-700 text-white text-sm font-bold rounded-lg transition-all duration-200 hover:scale-105 active:scale-95"
+                  >
+                    View Analytics
+                    <ArrowRight className="w-4 h-4" />
+                  </Link>
+                  <button
+                    onClick={() => setShowSuccessNotification(false)}
+                    className="px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors"
+                  >
+                    Dismiss
+                  </button>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowSuccessNotification(false)}
+                className="flex-shrink-0 p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              >
+                <X className="w-5 h-5 text-gray-500 dark:text-gray-400" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

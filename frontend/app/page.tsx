@@ -1,10 +1,28 @@
 'use client'
 
 import Link from 'next/link'
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import AuthModal from '@/components/AuthModal'
 
 export default function LandingPage() {
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false)
+  const router = useRouter()
+
+  const handleAuthSuccess = () => {
+    setIsAuthModalOpen(false)
+    router.push('/dashboard')
+  }
+
   return (
     <div className="relative flex min-h-screen w-full flex-col overflow-x-hidden">
+      {/* Auth Modal */}
+      <AuthModal 
+        isOpen={isAuthModalOpen} 
+        onClose={() => setIsAuthModalOpen(false)}
+        onSuccess={handleAuthSuccess}
+      />
+
       {/* Navigation */}
       <div className="sticky top-0 z-50 w-full bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-sm transition-all duration-300">
         <div className="mx-auto flex max-w-6xl items-center justify-between whitespace-nowrap border-b border-gray-200/50 dark:border-gray-700/50 px-4 py-3 sm:px-6 lg:px-8">
@@ -40,15 +58,18 @@ export default function LandingPage() {
           </div>
 
           <div className="flex items-center gap-2 sm:gap-4">
-            <a className="hidden text-sm font-medium hover:text-primary dark:hover:text-blue-400 sm:block transition-colors duration-200" href="#">
+            <button 
+              onClick={() => setIsAuthModalOpen(true)}
+              className="hidden text-sm font-medium hover:text-primary dark:hover:text-blue-400 sm:block transition-colors duration-200"
+            >
               Login
-            </a>
-            <Link
-              href="/dashboard"
+            </button>
+            <button
+              onClick={() => setIsAuthModalOpen(true)}
               className="flex h-9 sm:h-10 cursor-pointer items-center justify-center overflow-hidden rounded-lg bg-primary px-3 sm:px-4 text-xs sm:text-sm font-bold text-white transition-all duration-200 hover:bg-blue-800 hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
             >
               <span className="truncate">Start Free Trial</span>
-            </Link>
+            </button>
           </div>
         </div>
       </div>
@@ -69,12 +90,12 @@ export default function LandingPage() {
             </div>
 
             <div className="flex flex-col sm:flex-row flex-wrap items-center justify-center gap-3 sm:gap-4 w-full sm:w-auto">
-              <Link
-                href="/dashboard"
+              <button
+                onClick={() => setIsAuthModalOpen(true)}
                 className="w-full sm:w-auto flex h-11 sm:h-12 min-w-[140px] cursor-pointer items-center justify-center overflow-hidden rounded-lg bg-primary px-6 text-sm sm:text-base font-bold text-white transition-all duration-200 hover:bg-blue-800 hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
               >
                 <span className="truncate">Start Free Trial</span>
-              </Link>
+              </button>
               <button className="w-full sm:w-auto flex h-11 sm:h-12 min-w-[140px] cursor-pointer items-center justify-center overflow-hidden rounded-lg border border-gray-300 bg-background-light px-6 text-sm sm:text-base font-bold text-text-light transition-all duration-200 hover:bg-gray-100 dark:border-gray-700 dark:bg-background-dark dark:text-text-dark dark:hover:bg-gray-800 hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2">
                 <span className="truncate">See Demo</span>
               </button>
