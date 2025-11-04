@@ -41,7 +41,22 @@ export interface User {
   email: string
   username: string
   full_name?: string
+  avatar_url?: string
+  bio?: string
+  company?: string
+  role?: string
   is_active: boolean
+  created_at: string
+}
+
+export interface UserUpdate {
+  email?: string
+  full_name?: string
+  bio?: string
+  company?: string
+  role?: string
+  avatar_url?: string
+  password?: string
 }
 
 export interface Notification {
@@ -126,11 +141,39 @@ export const authApi = {
   logout: () => {
     if (typeof window !== 'undefined') {
       localStorage.removeItem('token')
+      localStorage.removeItem('user')
     }
   },
 
   getCurrentUser: async () => {
-    return api.get<User>('/auth/me')
+    const response = await api.get<User>('/auth/me')
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('user', JSON.stringify(response.data))
+    }
+    return response
+  },
+
+  updateProfile: async (data: UserUpdate) => {
+    const response = await api.put<User>('/auth/me', data)
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('user', JSON.stringify(response.data))
+    }
+    return response
+  },
+
+  uploadAvatar: async (file: File) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    
+    const response = await api.post<User>('/auth/me/avatar', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('user', JSON.stringify(response.data))
+    }
+    
+    return response
   },
 }
 

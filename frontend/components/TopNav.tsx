@@ -1,8 +1,8 @@
 'use client'
 
 import { Search } from 'lucide-react'
-import Image from 'next/image'
 import { NotificationPanel } from '@/components/NotificationPanel'
+import { ProfileDropdown } from '@/components/ProfileDropdown'
 
 export function TopNav() {
   return (
@@ -19,15 +19,7 @@ export function TopNav() {
       
       <div className="flex items-center gap-4">
         <NotificationPanel />
-        
-        <div className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10 ring-2 ring-offset-2 ring-offset-card-light dark:ring-offset-card-dark ring-primary/50 relative overflow-hidden">
-          <Image
-            src="https://lh3.googleusercontent.com/aida-public/AB6AXuAwnEeBEd6cCXQq8TWIRzdBHpvw3DkeHEunqiqkHr9JIiJeNOGI2cGEFOZWbLhcJq9tTsgXXFPLKLM7pgFxxOGHpg2lqqHZJLPqbY7W67OGXMwWIAFTAWfw_PtnikSXAEuOWluAl06bCGmI04_EbdEcxcEpaMezt5V_3nL0n0SMOVbwwqSrpRx4k1b5WqfckXKzB0jcz4QNmUSJM7WttjD0XUyusmKoetNJ3PKwhZk51AbJeVVOMoe6nfslX6SFAYo8O5Fb4FshnXZo"
-            alt="User avatar"
-            fill
-            className="object-cover"
-          />
-        </div>
+        <ProfileDropdown />
       </div>
     </header>
   )
