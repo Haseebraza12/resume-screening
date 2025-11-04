@@ -36,11 +36,14 @@ export default function AnalyticsPage() {
   useEffect(() => {
     fetchAnalytics()
     fetchJobs()
+    fetchMatchesData() // Fetch matches data on initial load
   }, [])
 
   useEffect(() => {
     if (selectedJob !== undefined) {
       fetchMatchesData(selectedJob)
+    } else {
+      fetchMatchesData() // Fetch all matches when no job is selected
     }
   }, [selectedJob])
 
@@ -54,9 +57,6 @@ export default function AnalyticsPage() {
 
       const skillsResponse = await analyticsApi.getSkillsDistribution(10)
       setSkills(skillsResponse.data)
-
-      const matchesResponse = await analyticsApi.getMatchesAnalytics()
-      setMatchesData(matchesResponse.data)
 
     } catch (err: any) {
       console.error('Error fetching analytics:', err)

@@ -99,6 +99,25 @@ async def root():
     }
 
 
+# Startup event to verify RAG service
+@app.on_event("startup")
+async def startup_event():
+    """Verify RAG service initialization on startup"""
+    try:
+        from app.services.rag_service import rag_service
+        logger.info("🤖 Verifying RAG Service...")
+        logger.info(f"   ✅ Embeddings Model: {rag_service.embeddings.model_name if rag_service.embeddings else 'Not loaded'}")
+        logger.info(f"   {'✅' if rag_service.llm_available else '⚠️'} LLM Available: {rag_service.llm_available}")
+        if rag_service.llm_available:
+            logger.info(f"   ✅ LLM Model: {settings.LLM_REPO_ID}")
+        else:
+            logger.warning("   ⚠️  LLM not available - AI features will be limited")
+        logger.info("🚀 RAG Service ready!")
+    except Exception as e:
+        logger.error(f"❌ RAG Service initialization failed: {str(e)}")
+        logger.warning("⚠️  Application will run with limited AI features")
+
+
 # Include routers
 app.include_router(auth.router, prefix=settings.API_V1_PREFIX)
 app.include_router(jobs.router, prefix=settings.API_V1_PREFIX)

@@ -17,29 +17,46 @@ def get_dashboard_stats(
     db: Session = Depends(get_db),
     current_user: Optional[User] = Depends(get_optional_current_user)
 ):
-    """Get dashboard statistics - shows all data for demo purposes"""
+    """Get dashboard statistics filtered by current user"""
     
-    # For demo purposes, show all data regardless of user
-    # In production, you might want to filter by user: Job.user_id == current_user.id
+    if not current_user:
+        # Return empty stats for non-authenticated users
+        return DashboardStats(
+            total_jobs=0,
+            total_resumes=0,
+            total_matches=0,
+            avg_match_score=0.0,
+            pending_reviews=0,
+            shortlisted=0
+        )
     
-    # Total jobs
-    total_jobs = db.query(Job).count()
+    # Total jobs created by this user
+    total_jobs = db.query(Job).filter(Job.user_id == current_user.id).count()
     
-    # Total resumes
-    total_resumes = db.query(Resume).count()
+    # Total resumes uploaded by this user
+    total_resumes = db.query(Resume).filter(Resume.user_id == current_user.id).count()
     
-    # Total matches
-    total_matches = db.query(Match).count()
+    # Total matches for this user's jobs
+    total_matches = db.query(Match).join(Job).filter(Job.user_id == current_user.id).count()
     
-    # Average match score
-    avg_score_result = db.query(func.avg(Match.match_score)).scalar()
+    # Average match score for this user's jobs
+    avg_score_result = db.query(func.avg(Match.match_score))\
+        .join(Job)\
+        .filter(Job.user_id == current_user.id)\
+        .scalar()
     average_match_score = round(float(avg_score_result or 0), 2)
     
-    # Pending reviews (matches with status 'pending')
-    pending_reviews = db.query(Match).filter(Match.status == 'pending').count()
+    # Pending reviews (matches with status 'pending') for this user's jobs
+    pending_reviews = db.query(Match)\
+        .join(Job)\
+        .filter(Job.user_id == current_user.id, Match.status == 'pending')\
+        .count()
     
-    # Shortlisted candidates
-    shortlisted = db.query(Match).filter(Match.status == 'shortlisted').count()
+    # Shortlisted candidates for this user's jobs
+    shortlisted = db.query(Match)\
+        .join(Job)\
+        .filter(Job.user_id == current_user.id, Match.status == 'shortlisted')\
+        .count()
     
     return DashboardStats(
         total_jobs=total_jobs,
@@ -57,12 +74,16 @@ def get_skills_distribution(
     current_user: Optional[User] = Depends(get_optional_current_user),
     db: Session = Depends(get_db)
 ):
-    """Get top skills distribution from all resumes - shows all data for demo purposes"""
+    """Get top skills distribution from user's resumes"""
     
-    # For demo purposes, show all resumes regardless of user
-    resumes = db.query(Resume).all()
+    if not current_user:
+        # Return empty list for non-authenticated users
+        return []
     
-    # Aggregate all skills
+    # Get only resumes uploaded by this user
+    resumes = db.query(Resume).filter(Resume.user_id == current_user.id).all()
+    
+    # Aggregate all skills from user's resumes
     all_skills = []
     for resume in resumes:
         if resume.extracted_skills:
@@ -80,21 +101,6 @@ def get_skills_distribution(
             category="technical"  # Could be enhanced with skill categorization
         ))
     
-    # Update skills table for persistent storage
-    for skill_name, count in skill_counts.items():
-        existing_skill = db.query(Skill).filter(Skill.name == skill_name).first()
-        if existing_skill:
-            existing_skill.count = count
-        else:
-            new_skill = Skill(
-                name=skill_name,
-                category="technical",
-                count=count
-            )
-            db.add(new_skill)
-    
-    db.commit()
-    
     return distribution
 
 
@@ -105,13 +111,21 @@ def get_matches_analytics(
     current_user: Optional[User] = Depends(get_optional_current_user),
     db: Session = Depends(get_db)
 ):
-    """Get detailed match analytics"""
+    """Get detailed match analytics for current user's jobs"""
     
-    # Base query (filter by user if authenticated)
-    if current_user:
-        query = db.query(Match).join(Job).filter(Job.user_id == current_user.id)
-    else:
-        query = db.query(Match).join(Job)
+    if not current_user:
+        # Return empty analytics for non-authenticated users
+        return MatchesAnalytics(
+            total_matches=0,
+            average_score=0.0,
+            high_matches=0,
+            medium_matches=0,
+            low_matches=0,
+            score_distribution={}
+        )
+    
+    # Base query - filter by user's jobs
+    query = db.query(Match).join(Job).filter(Job.user_id == current_user.id)
     
     if job_id:
         query = query.filter(Match.job_id == job_id)

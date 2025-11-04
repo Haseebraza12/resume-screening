@@ -44,9 +44,9 @@ class RAGService:
             logger.info("🔧 Setting up HuggingFace LLM...")
             llm = HuggingFaceEndpoint(
                 repo_id=settings.LLM_REPO_ID,
-                max_length=settings.LLM_MAX_LENGTH,
+                huggingfacehub_api_token=settings.HUGGINGFACEHUB_API_TOKEN,
+                max_new_tokens=settings.LLM_MAX_LENGTH,
                 temperature=settings.LLM_TEMPERATURE,
-                token=settings.HUGGINGFACEHUB_API_TOKEN
             )
             logger.info("✅ LLM setup complete")
             return llm
