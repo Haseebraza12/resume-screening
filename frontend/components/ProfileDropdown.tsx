@@ -264,26 +264,43 @@ function EditProfileModal({
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Cleanup avatar preview URL on unmount
+  useEffect(() => {
+    return () => {
+      if (avatarPreview) {
+        URL.revokeObjectURL(avatarPreview)
+      }
+    }
+  }, [avatarPreview])
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
+      console.log('Avatar file selected:', file.name, file.size, file.type)
+      
       // Validate file size (max 5MB)
       if (file.size > 5 * 1024 * 1024) {
         setError('Avatar image must be less than 5MB')
+        e.target.value = '' // Reset file input
         return
       }
 
       // Validate file type
       if (!file.type.startsWith('image/')) {
-        setError('Please upload an image file')
+        setError('Please upload an image file (JPG, PNG, GIF, etc.)')
+        e.target.value = '' // Reset file input
         return
       }
 
       setAvatarFile(file)
-      setAvatarPreview(URL.createObjectURL(file))
+      const previewUrl = URL.createObjectURL(file)
+      setAvatarPreview(previewUrl)
       setError(null)
+      
+      console.log('Avatar preview created:', previewUrl)
     }
   }
 
@@ -291,19 +308,57 @@ function EditProfileModal({
     e.preventDefault()
     setIsLoading(true)
     setError(null)
+    setSuccess(null)
 
     try {
+      let updatedUser = user
+
       // Upload avatar first if changed
       if (avatarFile) {
-        await authApi.uploadAvatar(avatarFile)
+        console.log('Uploading avatar...')
+        const avatarResponse = await authApi.uploadAvatar(avatarFile)
+        updatedUser = avatarResponse.data
+        console.log('Avatar uploaded successfully:', avatarResponse.data.avatar_url)
+        setSuccess('Avatar uploaded successfully!')
       }
 
-      // Update profile
-      const response = await authApi.updateProfile(formData)
-      onSuccess(response.data)
+      // Update profile with form data
+      console.log('Updating profile...', formData)
+      const profileResponse = await authApi.updateProfile(formData)
+      updatedUser = profileResponse.data
+      
+      // Update localStorage with the latest user data
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('user', JSON.stringify(updatedUser))
+      }
+
+      console.log('Profile updated successfully:', updatedUser)
+      setSuccess('Profile updated successfully!')
+      
+      // Call success callback with updated user after a short delay
+      setTimeout(() => {
+        onSuccess(updatedUser)
+      }, 1000)
     } catch (err: any) {
       console.error('Failed to update profile:', err)
-      setError(err.response?.data?.detail || 'Failed to update profile')
+      console.error('Error details:', err.response?.data)
+      
+      // More specific error messages
+      if (err.response?.status === 400) {
+        setError(err.response?.data?.detail || 'Invalid data provided')
+      } else if (err.response?.status === 401) {
+        setError('Session expired. Please login again.')
+        setTimeout(() => {
+          authApi.logout()
+          window.location.href = '/'
+        }, 2000)
+      } else if (err.response?.status === 413) {
+        setError('File too large. Please upload an image smaller than 5MB')
+      } else if (err.message === 'Network Error') {
+        setError('Cannot connect to server. Please check if backend is running.')
+      } else {
+        setError(err.response?.data?.detail || 'Failed to update profile. Please try again.')
+      }
     } finally {
       setIsLoading(false)
     }
@@ -328,6 +383,14 @@ function EditProfileModal({
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          {/* Success Message */}
+          {success && (
+            <div className="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg text-green-700 dark:text-green-400 text-sm flex items-center gap-2">
+              <Check className="w-4 h-4" />
+              {success}
+            </div>
+          )}
+
           {/* Error Message */}
           {error && (
             <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-400 text-sm">

@@ -1,8 +1,10 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 import time
 import logging
+from pathlib import Path
 
 from app.config import settings
 from app.database import engine, Base
@@ -40,6 +42,18 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Create uploads directory if it doesn't exist
+uploads_dir = Path("uploads")
+uploads_dir.mkdir(exist_ok=True)
+(uploads_dir / "avatars").mkdir(exist_ok=True)
+
+# Mount static files for serving uploaded avatars
+try:
+    app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+    logger.info("✅ Static files mounted successfully at /uploads")
+except Exception as e:
+    logger.warning(f"⚠️  Could not mount static files: {str(e)}")
 
 
 # Request timing middleware
