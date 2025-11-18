@@ -8,6 +8,7 @@ from app.schemas import ChatRequest, ChatResponse
 from app.auth import get_current_active_user
 from app.services.rag_service import rag_service
 
+
 router = APIRouter(prefix="/chat", tags=["Chat"])
 
 
