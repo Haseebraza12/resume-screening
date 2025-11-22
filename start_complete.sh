@@ -12,6 +12,11 @@ YELLOW='\033[1;33m'
 RED='\033[0;31m'
 NC='\033[0m'
 
+# Get the directory where the script is located
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+BACKEND_DIR="$SCRIPT_DIR/backend"
+FRONTEND_DIR="$SCRIPT_DIR/frontend"
+
 # Kill any existing processes
 echo -e "${BLUE}Stopping any existing processes...${NC}"
 pkill -f "uvicorn app.main:app" 2>/dev/null
@@ -23,23 +28,55 @@ echo ""
 # Start PostgreSQL if not running
 echo -e "${BLUE}Checking PostgreSQL...${NC}"
 if ! systemctl is-active --quiet postgresql; then
-    echo -e "${YELLOW}Starting PostgreSQL...${NC}"
-    sudo systemctl start postgresql
+    echo -e "${YELLOW}PostgreSQL is not running.${NC}"
+    read -p "Do you want to start PostgreSQL? (y/n) " -n 1 -r
+    echo ""
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        echo -e "${YELLOW}Starting PostgreSQL (may require sudo)...${NC}"
+        sudo systemctl start postgresql
+        if ! systemctl is-active --quiet postgresql; then
+             echo -e "${RED}Failed to start PostgreSQL. Please start it manually.${NC}"
+             exit 1
+        fi
+    else
+        echo -e "${RED}PostgreSQL is required. Exiting.${NC}"
+        exit 1
+    fi
 fi
 echo -e "${GREEN}✓ PostgreSQL is running${NC}"
 echo ""
 
 # Start Backend
 echo -e "${BLUE}Starting Backend Server...${NC}"
-cd /home/haseeb-raza/Desktop/resume-screening/backend
-source ../venv/bin/activate
+if [ ! -d "$BACKEND_DIR" ]; then
+    echo -e "${RED}Backend directory not found at $BACKEND_DIR${NC}"
+    exit 1
+fi
+
+cd "$BACKEND_DIR"
+
+# Check for venv
+if [ ! -d "../venv" ] && [ ! -d "venv" ]; then
+    echo -e "${RED}Virtual environment not found. Please run setup first.${NC}"
+    exit 1
+fi
+
+if [ -d "../venv" ]; then
+    source ../venv/bin/activate
+elif [ -d "venv" ]; then
+    source venv/bin/activate
+fi
 
 # Check if demo data exists
-RESUME_COUNT=$(sudo -u postgres psql -d resumematch -tAc "SELECT COUNT(*) FROM resumes;" 2>/dev/null || echo "0")
-if [ "$RESUME_COUNT" -eq "0" ]; then
-    echo -e "${YELLOW}Creating demo data...${NC}"
-    python create_demo_data.py
-    echo -e "${GREEN}✓ Demo data created${NC}"
+if command -v psql &> /dev/null; then
+    RESUME_COUNT=$(sudo -u postgres psql -d resumematch -tAc "SELECT COUNT(*) FROM resumes;" 2>/dev/null || echo "0")
+    if [ "$RESUME_COUNT" -eq "0" ]; then
+        echo -e "${YELLOW}Creating demo data...${NC}"
+        python create_demo_data.py
+        echo -e "${GREEN}✓ Demo data created${NC}"
+    fi
+else
+    echo -e "${YELLOW}psql not found, skipping demo data check.${NC}"
 fi
 
 python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000 > /tmp/backend.log 2>&1 &
@@ -61,7 +98,13 @@ echo ""
 
 # Start Frontend
 echo -e "${BLUE}Starting Frontend...${NC}"
-cd /home/haseeb-raza/Desktop/resume-screening/frontend
+if [ ! -d "$FRONTEND_DIR" ]; then
+    echo -e "${RED}Frontend directory not found at $FRONTEND_DIR${NC}"
+    cleanup
+    exit 1
+fi
+
+cd "$FRONTEND_DIR"
 
 # Create .env.local if it doesn't exist
 if [ ! -f .env.local ]; then
@@ -115,8 +158,8 @@ echo ""
 cleanup() {
     echo ""
     echo -e "${YELLOW}Stopping services...${NC}"
-    kill $BACKEND_PID 2>/dev/null
-    kill $FRONTEND_PID 2>/dev/null
+    if [ ! -z "$BACKEND_PID" ]; then kill $BACKEND_PID 2>/dev/null; fi
+    if [ ! -z "$FRONTEND_PID" ]; then kill $FRONTEND_PID 2>/dev/null; fi
     pkill -f "uvicorn app.main:app" 2>/dev/null
     pkill -f "next dev" 2>/dev/null
     echo -e "${GREEN}✓ All services stopped${NC}"

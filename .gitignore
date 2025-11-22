@@ -6,3 +6,8 @@
 /Resume Screening RAG Pipeline.pdf
 /app.py
 /venv
+/testing_resumes
+./extract_ipynb.py
+./Demo_gradio_app.ipynb
+./notebook_code.py
+/guiding_files
