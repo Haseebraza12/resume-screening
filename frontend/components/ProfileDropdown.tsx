@@ -1,18 +1,19 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { 
-  User as UserIcon, 
-  Settings, 
-  LogOut, 
-  Camera, 
+import {
+  User as UserIcon,
+  Settings,
+  LogOut,
+  Camera,
   Edit3,
   Mail,
   Briefcase,
   Building2,
   X,
   Check,
-  Loader2
+  Loader2,
+  ChevronDown
 } from 'lucide-react'
 import Image from 'next/image'
 import { authApi, User } from '@/lib/api'
@@ -78,20 +79,27 @@ export function ProfileDropdown() {
   }
 
   const getAvatarUrl = () => {
-    if (user?.avatar_url) {
-      // If it's a full URL, return it
-      if (user.avatar_url.startsWith('http')) {
-        return user.avatar_url
-      }
-      // Otherwise, construct the URL from the backend
-      return `${process.env.NEXT_PUBLIC_API_BASE_URL}/${user.avatar_url}`
+    if (!user?.avatar_url) {
+      return null
     }
-    return null
+
+    // If it's already a full URL, return it
+    if (user.avatar_url.startsWith('http://') || user.avatar_url.startsWith('https://')) {
+      return user.avatar_url
+    }
+
+    // Construct URL from backend - use NEXT_PUBLIC_API_URL with fallback
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+
+    // Remove leading slash from avatar_url if present to avoid double slashes
+    const avatarPath = user.avatar_url.startsWith('/') ? user.avatar_url : `/${user.avatar_url}`
+
+    return `${apiUrl}${avatarPath}`
   }
 
   if (!user) {
     return (
-      <div className="bg-gray-200 dark:bg-gray-700 rounded-full size-10 animate-pulse" />
+      <div className="bg-gray-200 dark:bg-gray-700 rounded-full size-8 animate-pulse" />
     )
   }
 
@@ -100,40 +108,33 @@ export function ProfileDropdown() {
       {/* Profile Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+        className="flex items-center gap-2 hover:opacity-80 transition-opacity"
       >
-        <div className="relative">
-          <div className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10 ring-2 ring-offset-2 ring-offset-card-light dark:ring-offset-card-dark ring-primary/50 relative overflow-hidden">
-            {getAvatarUrl() ? (
-              <Image
-                src={getAvatarUrl()!}
-                alt={user.full_name || user.username}
-                fill
-                className="object-cover"
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary to-blue-600 text-white font-bold text-sm">
-                {getInitials(user.full_name, user.username)}
-              </div>
-            )}
-          </div>
-          {/* Online indicator */}
-          <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white dark:border-gray-800 rounded-full" />
+        <div className="w-8 h-8 rounded-full bg-accent flex items-center justify-center text-white font-bold text-xs overflow-hidden">
+          {getAvatarUrl() ? (
+            <Image
+              src={getAvatarUrl()!}
+              alt={user.full_name || user.username}
+              width={32}
+              height={32}
+              className="object-cover w-full h-full"
+            />
+          ) : (
+            getInitials(user.full_name, user.username)
+          )}
         </div>
 
-        <div className="hidden md:block text-left">
-          <p className="text-sm font-semibold text-gray-900 dark:text-white">
-            {user.full_name || user.username}
-          </p>
-          <p className="text-xs text-gray-500 dark:text-gray-400">
-            {user.role || user.email}
-          </p>
+        <div className="flex items-center gap-1">
+          <span className="text-sm font-bold text-text-primary">
+            {user.full_name?.split(' ')[0] || user.username}
+          </span>
+          <ChevronDown className="w-4 h-4 text-text-primary" />
         </div>
       </button>
 
       {/* Dropdown Menu */}
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden z-50 animate-scale-in">
+        <div className="absolute right-0 mt-2 w-80 bg-primary-bg rounded-3xl shadow-2xl border border-border/30 overflow-hidden z-50 animate-scale-in">
           {/* User Info Header */}
           <div className="p-4 bg-gradient-to-br from-primary to-blue-600 text-white">
             <div className="flex items-start gap-3">
@@ -174,19 +175,19 @@ export function ProfileDropdown() {
           </div>
 
           {/* User Details */}
-          <div className="p-4 border-b border-gray-200 dark:border-gray-700 space-y-2">
-            <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+          <div className="p-4 border-b border-border/30 space-y-2">
+            <div className="flex items-center gap-2 text-sm text-text-secondary">
               <Mail className="w-4 h-4" />
               <span className="truncate">{user.email}</span>
             </div>
             {user.role && (
-              <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+              <div className="flex items-center gap-2 text-sm text-text-secondary">
                 <Briefcase className="w-4 h-4" />
                 <span>{user.role}</span>
               </div>
             )}
             {user.company && (
-              <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+              <div className="flex items-center gap-2 text-sm text-text-secondary">
                 <Building2 className="w-4 h-4" />
                 <span>{user.company}</span>
               </div>
@@ -200,7 +201,7 @@ export function ProfileDropdown() {
                 setShowEditModal(true)
                 setIsOpen(false)
               }}
-              className="w-full flex items-center gap-3 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+              className="w-full flex items-center gap-3 px-3 py-2 text-sm text-text-secondary hover:text-text-primary hover:bg-secondary-bg rounded-xl transition-colors"
             >
               <Edit3 className="w-4 h-4" />
               <span>Edit Profile</span>
@@ -211,7 +212,7 @@ export function ProfileDropdown() {
                 window.location.href = '/settings'
                 setIsOpen(false)
               }}
-              className="w-full flex items-center gap-3 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+              className="w-full flex items-center gap-3 px-3 py-2 text-sm text-text-secondary hover:text-text-primary hover:bg-secondary-bg rounded-xl transition-colors"
             >
               <Settings className="w-4 h-4" />
               <span>Settings</span>
@@ -219,7 +220,7 @@ export function ProfileDropdown() {
 
             <button
               onClick={handleLogout}
-              className="w-full flex items-center gap-3 px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+              className="w-full flex items-center gap-3 px-3 py-2 text-sm text-status-error hover:bg-status-error/10 rounded-xl transition-colors"
             >
               <LogOut className="w-4 h-4" />
               <span>Logout</span>
@@ -244,11 +245,11 @@ export function ProfileDropdown() {
 }
 
 // Edit Profile Modal Component
-function EditProfileModal({ 
-  user, 
-  onClose, 
-  onSuccess 
-}: { 
+function EditProfileModal({
+  user,
+  onClose,
+  onSuccess
+}: {
   user: User
   onClose: () => void
   onSuccess: (user: User) => void
@@ -280,7 +281,7 @@ function EditProfileModal({
     const file = e.target.files?.[0]
     if (file) {
       console.log('Avatar file selected:', file.name, file.size, file.type)
-      
+
       // Validate file size (max 5MB)
       if (file.size > 5 * 1024 * 1024) {
         setError('Avatar image must be less than 5MB')
@@ -299,7 +300,7 @@ function EditProfileModal({
       const previewUrl = URL.createObjectURL(file)
       setAvatarPreview(previewUrl)
       setError(null)
-      
+
       console.log('Avatar preview created:', previewUrl)
     }
   }
@@ -326,7 +327,7 @@ function EditProfileModal({
       console.log('Updating profile...', formData)
       const profileResponse = await authApi.updateProfile(formData)
       updatedUser = profileResponse.data
-      
+
       // Update localStorage with the latest user data
       if (typeof window !== 'undefined') {
         localStorage.setItem('user', JSON.stringify(updatedUser))
@@ -334,7 +335,7 @@ function EditProfileModal({
 
       console.log('Profile updated successfully:', updatedUser)
       setSuccess('Profile updated successfully!')
-      
+
       // Call success callback with updated user after a short delay
       setTimeout(() => {
         onSuccess(updatedUser)
@@ -342,7 +343,7 @@ function EditProfileModal({
     } catch (err: any) {
       console.error('Failed to update profile:', err)
       console.error('Error details:', err.response?.data)
-      
+
       // More specific error messages
       if (err.response?.status === 400) {
         setError(err.response?.data?.detail || 'Invalid data provided')
@@ -366,16 +367,16 @@ function EditProfileModal({
 
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
-      <div className="relative w-full max-w-md bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 animate-scale-in max-h-[90vh] overflow-y-auto">
+      <div className="relative w-full max-w-md bg-primary-bg rounded-3xl shadow-2xl border border-border/30 animate-scale-in max-h-[90vh] overflow-y-auto">
         {/* Header */}
-        <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-6 pb-4 z-10">
+        <div className="sticky top-0 bg-primary-bg border-b border-border/30 p-6 pb-4 z-10">
           <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+            <h2 className="text-2xl font-bold text-text-primary">
               Edit Profile
             </h2>
             <button
               onClick={onClose}
-              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+              className="p-2 hover:bg-secondary-bg rounded-xl transition-colors text-text-secondary hover:text-text-primary"
             >
               <X className="w-5 h-5" />
             </button>
@@ -385,7 +386,7 @@ function EditProfileModal({
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {/* Success Message */}
           {success && (
-            <div className="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg text-green-700 dark:text-green-400 text-sm flex items-center gap-2">
+            <div className="p-3 bg-green-100 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded-xl text-green-800 dark:text-green-400 text-sm flex items-center gap-2">
               <Check className="w-4 h-4" />
               {success}
             </div>
@@ -393,7 +394,7 @@ function EditProfileModal({
 
           {/* Error Message */}
           {error && (
-            <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-400 text-sm">
+            <div className="p-3 bg-red-100 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-xl text-red-800 dark:text-red-400 text-sm">
               {error}
             </div>
           )}
@@ -406,7 +407,7 @@ function EditProfileModal({
                   <img src={avatarPreview} alt="Avatar preview" className="w-full h-full object-cover" />
                 ) : user.avatar_url ? (
                   <Image
-                    src={`${process.env.NEXT_PUBLIC_API_BASE_URL}/${user.avatar_url}`}
+                    src={user.avatar_url.startsWith('http') ? user.avatar_url : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}${user.avatar_url.startsWith('/') ? user.avatar_url : `/${user.avatar_url}`}`}
                     alt="Current avatar"
                     width={96}
                     height={96}
@@ -440,70 +441,70 @@ function EditProfileModal({
 
           {/* Full Name */}
           <div>
-            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+            <label className="block text-sm font-bold text-text-primary mb-2">
               Full Name
             </label>
             <input
               type="text"
               value={formData.full_name}
               onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
-              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              className="w-full px-4 py-3 rounded-xl bg-secondary-bg border-transparent focus:bg-white border focus:border-accent text-text-primary placeholder-text-tertiary focus:outline-none focus:ring-0 transition-all"
               placeholder="John Doe"
             />
           </div>
 
           {/* Email */}
           <div>
-            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+            <label className="block text-sm font-bold text-text-primary mb-2">
               Email
             </label>
             <input
               type="email"
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              className="w-full px-4 py-3 rounded-xl bg-secondary-bg border-transparent focus:bg-white border focus:border-accent text-text-primary placeholder-text-tertiary focus:outline-none focus:ring-0 transition-all"
               placeholder="john@example.com"
             />
           </div>
 
           {/* Role */}
           <div>
-            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+            <label className="block text-sm font-bold text-text-primary mb-2">
               Job Title / Role
             </label>
             <input
               type="text"
               value={formData.role}
               onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              className="w-full px-4 py-3 rounded-xl bg-secondary-bg border-transparent focus:bg-white border focus:border-accent text-text-primary placeholder-text-tertiary focus:outline-none focus:ring-0 transition-all"
               placeholder="HR Manager"
             />
           </div>
 
           {/* Company */}
           <div>
-            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+            <label className="block text-sm font-bold text-text-primary mb-2">
               Company
             </label>
             <input
               type="text"
               value={formData.company}
               onChange={(e) => setFormData({ ...formData, company: e.target.value })}
-              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              className="w-full px-4 py-3 rounded-xl bg-secondary-bg border-transparent focus:bg-white border focus:border-accent text-text-primary placeholder-text-tertiary focus:outline-none focus:ring-0 transition-all"
               placeholder="Acme Corp"
             />
           </div>
 
           {/* Bio */}
           <div>
-            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+            <label className="block text-sm font-bold text-text-primary mb-2">
               Bio
             </label>
             <textarea
               value={formData.bio}
               onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
               rows={3}
-              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white resize-none"
+              className="w-full px-4 py-3 rounded-xl bg-secondary-bg border-transparent focus:bg-white border focus:border-accent text-text-primary placeholder-text-tertiary focus:outline-none focus:ring-0 transition-all resize-none"
               placeholder="Tell us about yourself..."
             />
           </div>
@@ -513,14 +514,14 @@ function EditProfileModal({
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              className="flex-1 px-4 py-3 bg-secondary-bg text-text-primary rounded-xl hover:bg-secondary-bg/80 transition-colors font-bold"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isLoading}
-              className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-primary text-white rounded-xl hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-bold shadow-lg"
             >
               {isLoading ? (
                 <>

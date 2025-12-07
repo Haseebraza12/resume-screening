@@ -10,7 +10,7 @@ const inter = Inter({
 })
 
 export const metadata: Metadata = {
-  title: 'ResumeMatch AI - The Smarter Way to Screen Resumes',
+  title: 'Rankify - The Smarter Way to Screen Resumes',
   description: 'Leverage the power of AI to find the perfect candidate, faster.',
 }
 

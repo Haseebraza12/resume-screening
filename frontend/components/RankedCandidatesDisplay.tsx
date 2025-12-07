@@ -108,7 +108,7 @@ export default function RankedCandidatesDisplay({ candidates, scoreDistribution 
                                     style={{ width: `${item.score}%` }}
                                 />
                                 <span className="absolute inset-0 flex items-center justify-center text-xs font-bold text-gray-900 dark:text-white">
-                                    {item.score}%
+                                    {item.score.toFixed(1)}%
                                 </span>
                             </div>
                         </div>
@@ -164,7 +164,7 @@ export default function RankedCandidatesDisplay({ candidates, scoreDistribution 
                                                     candidate.match_score
                                                 )}`}
                                             >
-                                                {candidate.match_score}%
+                                                {candidate.match_score.toFixed(1)}%
                                             </span>
                                         </div>
                                     </div>

@@ -3,14 +3,8 @@ from typing import List, Dict, Any, Optional
 import re
 import logging
 import numpy as np
-from langchain_community.document_loaders import PyPDFLoader
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_community.vectorstores import FAISS
-from langchain_huggingface import HuggingFaceEmbeddings
-
-# Notebook specific imports
-from sentence_transformers import CrossEncoder
-from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, pipeline
+import pytesseract
+from pdf2image import convert_from_path
 
 from app.config import settings
 
@@ -20,15 +14,73 @@ class RAGService:
     """Service for RAG operations aligned with Demo Notebook pipeline"""
     
     def __init__(self):
-        self.embeddings = self._setup_embeddings()
-        self.reranker = self._setup_reranker()
-        self.summarizer = self._setup_summarizer()
-        self.llm = self._setup_llm()
-        self.vector_store = None
+        # Lazy load components
+        self._embeddings = None
+        self._reranker = None
+        self._summarizer = None
+        self._vector_store = None
         
+        # Lazy load LLM
+        self._llm = None
+        self._llm_available = False
+        self._llm_tried_loading = False
+        
+        # Pre-compile regex for skills
+        self._skill_patterns = self._compile_skill_patterns()
+        
+    @property
+    def embeddings(self):
+        if not self._embeddings:
+            self._embeddings = self._setup_embeddings()
+        return self._embeddings
+
+    @property
+    def reranker(self):
+        if not self._reranker:
+            self._reranker = self._setup_reranker()
+        return self._reranker
+        
+    @property
+    def summarizer(self):
+        if not self._summarizer:
+            self._summarizer = self._setup_summarizer()
+        return self._summarizer
+
+    @property
+    def reranker_available(self):
+        return self.reranker is not None
+
+    @property
+    def summarizer_available(self):
+        return self.summarizer is not None
+
+    @property
+    def vector_store(self):
+        return self._vector_store
+        
+    @vector_store.setter
+    def vector_store(self, value):
+        self._vector_store = value
+
+    @property
+    def llm(self):
+        """Lazy load LLM on first access"""
+        if not self._llm_tried_loading:
+            self._llm = self._setup_llm()
+            self._llm_tried_loading = True
+        return self._llm
+        
+    @property
+    def llm_available(self):
+        """Check availability, triggering load if needed"""
+        if not self._llm_tried_loading:
+            self.llm # Trigger load
+        return self._llm_available
+
     def _setup_embeddings(self):
         """Setup HuggingFace embeddings (all-mpnet-base-v2)"""
         try:
+            from langchain_huggingface import HuggingFaceEmbeddings
             logger.info(f"🔧 Setting up embeddings: {settings.EMBEDDING_MODEL}...")
             embeddings = HuggingFaceEmbeddings(
                 model_name=settings.EMBEDDING_MODEL,
@@ -42,36 +94,38 @@ class RAGService:
             raise
 
     def _setup_llm(self):
-        """Setup LLM for generating explanations"""
+        """Setup local LLM using transformers pipeline"""
         try:
-            api_token = settings.HUGGINGFACEHUB_API_TOKEN
-            if not api_token:
-                logger.warning("⚠️ No HuggingFace API token found. LLM features will be disabled.")
-                self.llm_available = False
-                return None
-                
-            logger.info(f"🔧 Setting up LLM: {settings.LLM_REPO_ID}...")
+            logger.info(f"🔧 Setting up local LLM: {settings.LLM_REPO_ID}...")
+            logger.info("⬇️  Downloading/Loading model locally (this may take a while first time)...")
             
-            from langchain_huggingface import HuggingFaceEndpoint
+            from transformers import pipeline
             
-            llm = HuggingFaceEndpoint(
-                repo_id=settings.LLM_REPO_ID,
-                max_length=settings.LLM_MAX_LENGTH,
+            # Initialize pipeline locally
+            llm_pipeline = pipeline(
+                "text-generation",
+                model=settings.LLM_REPO_ID,
+                max_new_tokens=600,
                 temperature=settings.LLM_TEMPERATURE,
-                huggingfacehub_api_token=api_token
+                top_p=0.95,
+                do_sample=True,
+                device_map="auto",  # Use GPU if available, else CPU
+                trust_remote_code=True  # Required for newer architectures like Qwen3
             )
             
-            logger.info("✅ LLM setup complete")
-            self.llm_available = True
-            return llm
+            logger.info("✅ Local LLM setup complete")
+            self._llm_available = True
+            return llm_pipeline
+            
         except Exception as e:
-            logger.warning(f"⚠️ Failed to setup LLM: {str(e)}. Explanation features will be disabled.")
-            self.llm_available = False
+            logger.warning(f"⚠️ Failed to setup local LLM: {str(e)}. Explanation features will be disabled.")
+            self._llm_available = False
             return None
 
     def _setup_reranker(self):
         """Setup CrossEncoder for reranking"""
         try:
+            from sentence_transformers import CrossEncoder
             logger.info(f"🔧 Setting up reranker: {settings.RERANKER_MODEL}...")
             
             # Temporarily unset invalid HF tokens to allow anonymous access
@@ -87,16 +141,15 @@ class RAGService:
                 os.environ["HUGGINGFACEHUB_API_TOKEN"] = old_token
                 
             logger.info("✅ Reranker setup complete")
-            self.reranker_available = True
             return reranker
         except Exception as e:
             logger.warning(f"⚠️ Failed to setup reranker: {str(e)}. Reranking will be disabled.")
-            self.reranker_available = False
             return None
 
     def _setup_summarizer(self):
         """Setup T5 summarizer"""
         try:
+            from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, pipeline
             logger.info(f"🔧 Setting up summarizer: {settings.SUMMARIZER_MODEL}...")
             
             # Temporarily unset invalid HF tokens to allow anonymous access
@@ -119,17 +172,39 @@ class RAGService:
                 os.environ["HUGGINGFACEHUB_API_TOKEN"] = old_token
                 
             logger.info("✅ Summarizer setup complete")
-            self.summarizer_available = True
             return summarizer_pipeline
         except Exception as e:
             logger.warning(f"⚠️ Failed to setup summarizer: {str(e)}. Summarization will be disabled.")
-            self.summarizer_available = False
             return None
     
     def process_pdf(self, file_path: str) -> List[Any]:
         """Load and process a PDF file"""
+        from langchain_community.document_loaders import PyPDFLoader
+        from langchain.text_splitter import RecursiveCharacterTextSplitter
+        from langchain_core.documents import Document
+        
         loader = PyPDFLoader(file_path)
         documents = loader.load()
+        
+        # Check if text extraction was successful (OCR fallback)
+        total_text = "".join([d.page_content for d in documents])
+        if len(total_text.strip()) < 100:
+            logger.info(f"⚠️ PDF text content too short ({len(total_text.strip())} chars). Attempting OCR for {file_path}...")
+            try:
+                images = convert_from_path(file_path)
+                ocr_text = ""
+                for i, img in enumerate(images):
+                    logger.info(f"  🔍 OCR scanning page {i+1}...")
+                    ocr_text += pytesseract.image_to_string(img) + "\n"
+                
+                if len(ocr_text.strip()) > 100:
+                    documents = [Document(page_content=ocr_text, metadata={"source": file_path})]
+                    logger.info("✅ OCR extraction successful")
+                else:
+                    logger.warning("⚠️ OCR also yielded low text content")
+            except Exception as e:
+                logger.error(f"❌ OCR failed: {str(e)}")
+                # Continue with original documents if OCR fails
         
         text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=settings.CHUNK_SIZE,
@@ -140,6 +215,7 @@ class RAGService:
     
     def create_vector_store(self, documents):
         """Create a FAISS vector store from documents"""
+        from langchain_community.vectorstores import FAISS
         self.vector_store = FAISS.from_documents(
             documents=documents,
             embedding=self.embeddings
@@ -148,6 +224,7 @@ class RAGService:
     
     def add_to_vector_store(self, documents):
         """Add documents to existing vector store"""
+        from langchain_community.vectorstores import FAISS
         if self.vector_store is None:
             return self.create_vector_store(documents)
         
@@ -163,6 +240,7 @@ class RAGService:
             self.vector_store.save_local(path)
     
     def load_vector_store(self, path: str):
+        from langchain_community.vectorstores import FAISS
         self.vector_store = FAISS.load_local(
             path,
             self.embeddings,
@@ -170,9 +248,8 @@ class RAGService:
         )
         return self.vector_store
     
-    def extract_skills(self, text: str) -> List[str]:
-        """Extract skills using regex logic from notebook"""
-        # Common skills list from notebook
+    def _compile_skill_patterns(self):
+        """Pre-compile regex patterns for skills"""
         COMMON_SKILLS = [
             "python","django","flask","aws","docker","spark","snowflake","node.js",
             "kubernetes","terraform","sql","tableau","mongodb","etl","git","pandas",
@@ -180,16 +257,238 @@ class RAGService:
             "c++", "java", "go", "rust", "linux", "azure", "gcp", "machine learning",
             "deep learning", "nlp", "computer vision", "scikit-learn", "pytorch", "tensorflow"
         ]
-        
+        return {s: re.compile(r'\b' + re.escape(s.lower()) + r'\b') for s in COMMON_SKILLS}
+
+    def extract_skills(self, text: str) -> List[str]:
+        """Extract skills using pre-compiled regex"""
         txt = text.lower()
         found = set()
-        for s in COMMON_SKILLS:
-            pattern = r'\b' + re.escape(s.lower()) + r'\b'
-            if re.search(pattern, txt):
-                found.add(s)
+        for skill, pattern in self._skill_patterns.items():
+            if pattern.search(txt):
+                found.add(skill)
         return sorted(list(found))
 
-    def summarize_text(self, text: str) -> str:
+    def extract_education(self, text: str) -> dict:
+        """
+        Extract education information from resume text.
+        Returns dict with degree, institution, and year.
+        """
+        
+        # Degree patterns (most common to least common)
+        degree_patterns = [
+            # PhD patterns
+            r'(?:ph\.?d\.?|doctor of philosophy|doctorate)\s+(?:in\s+)?([a-z\s]+?)(?:\s+from|\s+at|\s+-|\s+\||$)',
+            # Master's patterns
+            r'(?:m\.?s\.?c?\.?|master(?:\'s)?|m\.?tech\.?|m\.?eng\.?|mba|m\.?b\.?a\.?)\s+(?:in\s+|of\s+)?([a-z\s]+?)(?:\s+from|\s+at|\s+-|\s+\||$)',
+            # Bachelor's patterns  
+            r'(?:b\.?s\.?c?\.?|bachelor(?:\'s)?|b\.?tech\.?|b\.?eng\.?|b\.?e\.?)\s+(?:in\s+|of\s+)?([a-z\s]+?)(?:\s+from|\s+at|\s+-|\s+\||$)',
+            # General degree patterns
+            r'(associate|diploma)\s+(?:in\s+|of\s+)?([a-z\s]+?)(?:\s+from|\s+at|\s+-|\s+\||$)',
+        ]
+        
+        # University/Institution patterns
+        university_patterns = [
+            r'(?:from|at)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\s+(?:University|Institute|College|School))',
+            r'([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\s+(?:University|Institute|College|School))',
+        ]
+        
+        # Year patterns
+        year_pattern = r'\b(19\d{2}|20\d{2})\b'
+        
+        text_lower = text.lower()
+        
+        # Extract degree
+        degree = None
+        field = None
+        for pattern in degree_patterns:
+            match = re.search(pattern, text_lower)
+            if match:
+                if 'ph' in pattern or 'doctor' in pattern:
+                    degree = "PhD"
+                elif 'master' in pattern or 'm.s' in pattern or 'mba' in pattern:
+                    degree = "Master's"
+                elif 'bachelor' in pattern or 'b.s' in pattern or 'b.tech' in pattern:
+                    degree = "Bachelor's"
+                elif 'associate' in pattern:
+                    degree = "Associate"
+                elif 'diploma' in pattern:
+                    degree = "Diploma"
+                
+                # Extract field of study
+                if match.groups():
+                    field = match.group(1).strip().title()
+                    # Clean up common suffixes
+                    field = re.sub(r'\s+(from|at|in|of)$', '', field, flags=re.IGNORECASE)
+                break
+        
+        # Extract institution
+        institution = None
+        for pattern in university_patterns:
+            match = re.search(pattern, text)
+            if match:
+                institution = match.group(1).strip()
+                break
+        
+        # Extract year
+        years = re.findall(year_pattern, text)
+        graduation_year = years[-1] if years else None  # Take most recent year
+        
+        # Build result
+        result = {}
+        
+        if degree and field:
+            result['degree'] = f"{degree} in {field}"
+        elif degree:
+            result['degree'] = degree
+        elif field:
+            result['degree'] = field.title()
+        
+        if institution:
+            result['institution'] = institution
+        
+        if graduation_year:
+            result['year'] = graduation_year
+        
+        return result if result else {"degree": "Not specified"}
+
+    def extract_experience(self, text: str) -> dict:
+        """Extract experience from text using robust regex patterns"""
+        text_lower = text.lower()
+        
+        # Pattern 1: "X years of experience"
+        match = re.search(r'(\d+)\+?\s*years?\s+(?:of\s+)?experience', text_lower)
+        if match:
+            return {"years": match.group(1)}
+        
+        # Pattern 2: "Experience: X years"
+        match = re.search(r'experience[:\s]+(\d+)\+?\s*years?', text_lower)
+        if match:
+             return {"years": match.group(1)}
+             
+        # Pattern 3: Calculate using date ranges
+        # Looking for YYYY - YYYY or YYYY - Present
+        # Using word boundaries to avoid matching phone numbers partly
+        date_ranges = re.findall(r'\b(20\d{2}|19\d{2})\s*[-–—to]+\s*(20\d{2}|present|current|now)\b', text_lower)
+        
+        if date_ranges:
+            try:
+                import datetime
+                current_year = datetime.datetime.now().year
+                
+                starts = []
+                ends = []
+                
+                for start, end in date_ranges:
+                    start_year = int(start)
+                    if end in ['present', 'current', 'now']:
+                        end_year = current_year
+                    else:
+                        end_year = int(end)
+                    
+                    if start_year <= end_year:
+                        starts.append(start_year)
+                        ends.append(end_year)
+                
+                if starts:
+                    # Approximate total span
+                    total_span = max(ends) - min(starts)
+                    # Cap at reasonable number (e.g. 50) to avoid bad regex matches (e.g. 1990 - 2024 is ok, but not 1900)
+                    if 0 < total_span < 60:
+                        return {"years": str(total_span)}
+            except Exception:
+                pass
+
+        return {}
+
+    def extract_contact_info(self, text: str) -> dict:
+        """Extract name, email and phone from text using optimized pattern matching"""
+        info = {"email": None, "phone": None, "name": None}
+        
+        # Name Extraction - optimized with scoring system
+        # Names typically appear at the very top of resume (first 5 lines)
+        lines = text.split('\n')[:8]
+        
+        # Common resume keywords to skip
+        skip_keywords = {
+            'resume', 'curriculum', 'cv', 'vitae', 'profile', 'summary', 
+            'objective', 'email', 'phone', 'address', 'mobile', 'tel',
+            'contact', 'skype', 'linkedin', 'github', '@', 'http', 'www',
+            'experience', 'education', 'skills', 'work', 'professional'
+        }
+        
+        best_candidate = None
+        best_score = 0
+        
+        for idx, line in enumerate(lines):
+            line = line.strip()
+            
+            # Quick filters
+            if len(line) < 5 or len(line) > 60:
+                continue
+            if any(char.isdigit() for char in line):  # Names rarely have numbers
+                continue
+            if line.lower() in skip_keywords:
+                continue
+            if any(keyword in line.lower() for keyword in skip_keywords):
+                continue
+            
+            # Score the line as a potential name
+            words = line.split()
+            if not (2 <= len(words) <= 5):  # Names typically 2-4 words
+                continue
+            
+            score = 0
+            
+            # Position score (earlier is better)
+            score += (8 - idx) * 2
+            
+            # Capitalization score
+            capitalized_words = sum(1 for w in words if w and w[0].isupper())
+            if capitalized_words == len(words):
+                score += 10  # All words capitalized
+            elif capitalized_words >= len(words) * 0.75:
+                score += 5
+            
+            # Length score (2-3 words ideal)
+            if len(words) in [2, 3]:
+                score += 8
+            elif len(words) == 4:
+                score += 3
+            
+            # Character score (alphabetic characters are good)
+            alpha_ratio = sum(c.isalpha() or c.isspace() for c in line) / len(line)
+            if alpha_ratio > 0.9:
+                score += 5
+            
+            # Title case bonus
+            if line.istitle():
+                score += 5
+            
+            if score > best_score:
+                best_score = score
+                best_candidate = line
+        
+        if best_candidate and best_score >= 10:  # Confidence threshold
+            info["name"] = best_candidate
+        
+        # Email Extraction
+        email_pattern = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
+        emails = re.findall(email_pattern, text)
+        if emails:
+            # Filter out common false positives if needed (e.g. example.com)
+            valid_emails = [e for e in emails if 'example.com' not in e]
+            if valid_emails:
+                info["email"] = valid_emails[0]
+        
+        # Phone Extraction (Basic)
+        # Matches: +1-123-456-7890, (123) 456-7890, 123 456 7890, 123-456-7890
+        phone_pattern = r'(?:(?:\+|00)?[1-9]\d{0,2}[-.\s]?)?(?:\(?\d{3}\)?[-.\s]?)?\d{3}[-.\s]?\d{4}'
+        phones = re.findall(phone_pattern, text)
+        if phones:
+             # Basic cleanup
+             info["phone"] = phones[0].strip()
+             
+        return info
         """Summarize text using T5 pipeline"""
         if not self.summarizer:
             return text[:200] + "..."
@@ -261,13 +560,20 @@ Explanation:"""
             if not resume_data:
                 continue
                 
-            skills = self.extract_skills(doc.page_content)
+            # Use skills from DB if available, otherwise extract from FULL text
+            skills = resume_data.get("skills") or []
+            if not skills:
+                skills = self.extract_skills(resume_data.get("text", ""))
+            
+            # If still no skills, try extracting from the chunk
+            if not skills:
+                skills = self.extract_skills(doc.page_content)
             
             result = {
                 "resume_id": resume_id,
                 "candidate_name": candidate_name,
                 "embedding_score": float(score),
-                "text": doc.page_content,
+                "text": doc.page_content, # Keep chunk for context if needed, or use full text? Let's use chunk for now as it matched.
                 "skills": skills,
                 "metadata": doc.metadata
             }
@@ -455,7 +761,7 @@ Explanation:"""
             "job_description": job_description[:200] + "...",
             "resume_preview": resume_text[:200] + "...",
             "match_score": normalized_score,
-            "skills_match": {"matched": skills},
+            "skills_match": {"matched_skills": skills},
             "summary": analysis.strip()
         }
 
@@ -655,7 +961,8 @@ Explanation:"""
                     job_description=job_description,
                     resume_text=candidate['text'],
                     rank=idx,
-                    score=candidate['rerank_score']
+                    score=candidate['rerank_score'],
+                    skills=candidate.get('skills', [])  # Pass pre-extracted skills
                 )
                 
                 logger.info(f"  ✅ Summary: {summary[:100]}...")
@@ -663,7 +970,8 @@ Explanation:"""
                 final_results.append({
                     'resume_id': candidate['resume_id'],
                     'score': candidate['rerank_score'],
-                    'summary': summary
+                    'summary': summary,
+                    'skills': candidate.get('skills', [])  # Include skills in return data
                 })
                 
             except Exception as e:
@@ -672,7 +980,8 @@ Explanation:"""
                 final_results.append({
                     'resume_id': candidate['resume_id'],
                     'score': candidate['rerank_score'],
-                    'summary': f"Strong candidate with {candidate['rerank_score']:.1%} match score based on semantic similarity."
+                    'summary': f"Strong candidate with {candidate['rerank_score']:.1%} match score based on semantic similarity.",
+                    'skills': candidate.get('skills', [])  # Include skills in fallback too
                 })
         
         logger.info("\n" + "=" * 80)
@@ -686,7 +995,8 @@ Explanation:"""
         job_description: str,
         resume_text: str,
         rank: int,
-        score: float
+        score: float,
+        skills: List[str] = None
     ) -> str:
         """
         Generate LLM summary explaining why a resume was selected.
@@ -696,15 +1006,20 @@ Explanation:"""
             resume_text: The candidate's resume text
             rank: The candidate's rank (1, 2, 3, etc.)
             score: The match score
+            skills: Pre-extracted skills list (optional)
             
         Returns:
             LLM-generated explanation string
         """
         
-        if not self.llm_available or not self.llm:
-            # Fallback: Extract key skills and create basic summary
+        # Use provided skills or extract if not provided
+        if not skills:
             skills = self.extract_skills(resume_text)
-            return f"Ranked #{rank} with {score:.1%} match. Key skills: {', '.join(skills[:5])}. Strong alignment with job requirements."
+        
+        if not self.llm_available or not self.llm:
+            # Fallback: Use provided skills to create basic summary
+            skills_text = ', '.join(skills) if skills else 'relevant technical skills'
+            return f"Ranked #{rank} with {score:.1%} match. Key skills: {skills_text}. Strong alignment with job requirements."
         
         try:
             # Create prompt for LLM
@@ -724,10 +1039,20 @@ Provide a concise 2-3 sentence explanation of why this candidate was selected, f
 Summary:"""
             
             # Generate summary
-            response = self.llm.invoke(prompt)
+            # Note: self.llm is a transformers pipeline, not a LangChain object
+            response = self.llm(prompt)
             
-            # Clean up response
-            summary = response.strip()
+            # Parse response - pipeline returns list of dicts: [{'generated_text': '...'}]
+            if isinstance(response, list) and len(response) > 0 and 'generated_text' in response[0]:
+                summary = response[0]['generated_text']
+            else:
+                summary = str(response)
+                
+            # Clean up response - remove prompt if it's included
+            if summary.startswith(prompt):
+                summary = summary[len(prompt):].strip()
+            
+            summary = summary.strip()
             
             # Ensure it's not too long
             if len(summary) > 300:
@@ -737,9 +1062,9 @@ Summary:"""
             
         except Exception as e:
             logger.warning(f"LLM summary generation failed: {str(e)}")
-            # Fallback
-            skills = self.extract_skills(resume_text)
-            return f"Selected for strong background and {score:.1%} match score. Key skills: {', '.join(skills[:5])}."
+            # Fallback with provided skills
+            skills_text = ', '.join(skills) if skills else 'relevant technical skills'
+            return f"Selected for strong background and {score:.1%} match score. Key skills: {skills_text}."
 
 # Global RAG service instance
 rag_service = RAGService()

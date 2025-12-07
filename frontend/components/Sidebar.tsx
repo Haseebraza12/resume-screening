@@ -2,85 +2,111 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { 
-  LayoutDashboard, 
-  Upload, 
-  Briefcase, 
-  BarChart3, 
-  Settings,
-  Search,
+import {
+  LayoutDashboard,
+  Briefcase,
+  Users,
   Star,
-  HelpCircle
+  GitCompare,
+  FileText,
+  CreditCard,
+  Puzzle,
+  UserPlus,
+  PlusCircle,
+  BarChart3,
+  Settings
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
 
-function Logo() {
-  return (
-    <div className="size-6 text-primary">
-      <svg fill="none" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
-        <g clipPath="url(#clip0_6_319)">
-          <path
-            d="M8.57829 8.57829C5.52816 11.6284 3.451 15.5145 2.60947 19.7452C1.76794 23.9758 2.19984 28.361 3.85056 32.3462C5.50128 36.3314 8.29667 39.7376 11.8832 42.134C15.4698 44.5305 19.6865 45.8096 24 45.8096C28.3135 45.8096 32.5302 44.5305 36.1168 42.134C39.7033 39.7375 42.4987 36.3314 44.1494 32.3462C45.8002 28.361 46.2321 23.9758 45.3905 19.7452C44.549 15.5145 42.4718 11.6284 39.4217 8.57829L24 24L8.57829 8.57829Z"
-            fill="currentColor"
-          />
-        </g>
-        <defs>
-          <clipPath id="clip0_6_319">
-            <rect fill="white" height="48" width="48" />
-          </clipPath>
-        </defs>
-      </svg>
-    </div>
-  )
+type NavItem = {
+  name: string
+  href: string
+  icon: React.ElementType
 }
 
-const navigation = [
-  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { name: 'Upload', href: '/upload', icon: Upload },
-  { name: 'Search', href: '/jobs', icon: Search },
-  { name: 'Analytics', href: '/analytics', icon: BarChart3 },
-  { name: 'Favorites', href: '/favorites', icon: Star },
-  { name: 'Settings', href: '/settings', icon: Settings },
-  { name: 'Help', href: '/help', icon: HelpCircle },
+type NavGroup = {
+  title?: string
+  items: NavItem[]
+}
+
+const navigationGroups: NavGroup[] = [
+  {
+    title: "The Daily Workflow",
+    items: [
+      { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+      { name: 'Jobs', href: '/jobs', icon: Briefcase },
+      { name: 'Talent Pool', href: '/upload', icon: Users },
+      { name: 'Saved', href: '/favorites', icon: Star },
+      { name: 'Analytics', href: '/analytics', icon: BarChart3 },
+    ]
+  },
+  {
+    title: "AI Tools",
+    items: [
+      { name: 'Quick Compare', href: '/quick-compare', icon: GitCompare },
+      { name: 'JD Generator', href: '/jd-generator', icon: FileText },
+    ]
+  },
+  {
+    title: "Organization",
+    items: [
+      { name: 'Team & Access', href: '/team', icon: UserPlus },
+      { name: 'Billing & Credits', href: '/billing', icon: CreditCard },
+      { name: 'Integrations', href: '/integrations', icon: Puzzle },
+      { name: 'Settings', href: '/settings', icon: Settings },
+    ]
+  }
 ]
 
 export function Sidebar() {
   const pathname = usePathname()
 
   return (
-    <aside className="w-64 flex-shrink-0 bg-card-light dark:bg-card-dark border-r border-border-light dark:border-border-dark flex flex-col">
-      <div className="flex items-center gap-2 h-16 px-6 border-b border-border-light dark:border-border-dark">
-        <Logo />
-        <h1 className="text-lg font-bold text-text-light dark:text-text-dark">
-          ResumeMatch AI
-        </h1>
+    <aside className="w-64 flex-shrink-0 bg-primary-fg border-r border-border/30 flex flex-col h-screen sticky top-0">
+      {/* Logo Area */}
+      <div className="flex items-center gap-3 h-20 px-6">
+        <img src="/logo-accent.png" alt="Rankify" className="w-auto h-8 object-contain" />
       </div>
-      
-      <nav className="flex-1 p-4">
-        <ul className="flex flex-col gap-2">
-          {navigation.map((item) => {
-            const isActive = pathname === item.href
-            const Icon = item.icon
-            
-            return (
-              <li key={item.name}>
-                <Link
-                  href={item.href}
-                  className={cn(
-                    'flex items-center gap-3 px-3 py-2 rounded-lg font-medium transition-colors',
-                    isActive
-                      ? 'bg-primary/10 text-primary font-bold'
-                      : 'hover:bg-black/5 dark:hover:bg-white/5'
-                  )}
-                >
-                  <Icon className="w-5 h-5" />
-                  {item.name}
-                </Link>
-              </li>
-            )
-          })}
-        </ul>
+
+      <nav className="flex-1 px-4 overflow-y-auto py-2 custom-scrollbar">
+        <div className="flex flex-col gap-8">
+          {navigationGroups.map((group, groupIndex) => (
+            <div key={groupIndex}>
+              {group.title && (
+                <h3 className="px-3 mb-2 text-xs font-semibold text-text-tertiary uppercase tracking-wider">
+                  {group.title}
+                </h3>
+              )}
+              <ul className="space-y-1">
+                {group.items.map((item) => {
+                  const isActive = pathname === item.href
+                  const Icon = item.icon
+
+                  return (
+                    <li key={item.name}>
+                      <Link
+                        href={item.href}
+                        className={cn(
+                          'flex items-center gap-3 px-5 py-3 rounded-full text-sm font-medium transition-all duration-200',
+                          isActive
+                            ? 'bg-white shadow-sm text-text-primary'
+                            : 'text-text-secondary hover:bg-white/50 hover:text-text-primary'
+                        )}
+                      >
+                        <Icon className={cn("w-5 h-5", isActive ? "text-accent" : "text-text-tertiary group-hover:text-text-primary")} />
+                        {item.name}
+                      </Link>
+                    </li>
+                  )
+                })}
+              </ul>
+            </div>
+          ))}
+        </div>
       </nav>
+
+      {/* User Profile / Bottom Section could go here if needed */}
     </aside>
   )
 }

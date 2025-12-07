@@ -27,8 +27,15 @@ api.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       if (typeof window !== 'undefined') {
+        const hadToken = !!localStorage.getItem('token')
         localStorage.removeItem('token')
-        window.location.href = '/login'
+        localStorage.removeItem('user')
+
+        // Only redirect if user was previously authenticated
+        // Don't redirect during login/registration attempts
+        if (hadToken && !error.config?.url?.includes('/auth/login') && !error.config?.url?.includes('/auth/register')) {
+          window.location.href = '/'
+        }
       }
     }
     return Promise.reject(error)
@@ -85,13 +92,16 @@ export interface Resume {
   id: number
   candidate_name: string
   candidate_email?: string
+  candidate_phone?: string
   file_name: string
   file_size: number
   extracted_skills?: string[]
-  extracted_experience?: string
-  extracted_education?: string
+  extracted_experience?: any
+  extracted_education?: Array<{degree?: string; institution?: string; year?: string}>
   status: string
   created_at: string
+  user_id?: number
+  job_id?: number
 }
 
 export interface Match {

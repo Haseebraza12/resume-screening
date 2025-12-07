@@ -102,7 +102,12 @@ def check_dependencies():
     
     for package in required_packages:
         try:
-            __import__(package.replace("-", "_"))
+            if package == "faiss-cpu":
+                import faiss
+            elif package == "python-jose":
+                import jose
+            else:
+                __import__(package.replace("-", "_"))
             print(f"✓ {package}")
         except ImportError:
             print(f"✗ {package} (missing)")

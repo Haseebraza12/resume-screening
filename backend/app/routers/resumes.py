@@ -132,6 +132,23 @@ async def upload_and_rank_resumes(
             skills = rag_service.extract_skills(text_content)
             logger.info(f"  ✅ Found {len(skills)} skills: {', '.join(skills[:5])}{'...' if len(skills) > 5 else ''}")
             
+            # Extract education
+            logger.info(f"  🎓 Extracting education...")
+            education = rag_service.extract_education(text_content)
+            # Wrap in list to match schema expectation
+            education_list = [education] if education else []
+            logger.info(f"  ✅ Education: {education.get('degree', 'Not found') if education else 'Not found'}")
+            
+            # Extract experience
+            logger.info(f"  💼 Extracting experience...")
+            experience = rag_service.extract_experience(text_content)
+            logger.info(f"  ✅ Experience: {experience.get('years', 'Not found')} years")
+            
+            # Extract contact information (name, email, phone)
+            logger.info(f"  📧 Extracting contact information...")
+            contact_info = rag_service.extract_contact_info(text_content)
+            logger.info(f"  ✅ Contact: Name={contact_info.get('name', 'Not found')}, Email={contact_info.get('email', 'Not found')}")
+            
             # Add to vector store
             logger.info(f"  🔢 Adding to vector store...")
             rag_service.add_to_vector_store(chunks)
@@ -145,11 +162,16 @@ async def upload_and_rank_resumes(
         resume = Resume(
             user_id=current_user.id,
             job_id=job.id,
+            candidate_name=contact_info.get('name'),
+            candidate_email=contact_info.get('email'),
+            candidate_phone=contact_info.get('phone'),
             file_name=file.filename,
             file_path=file_path,
             file_size=file_size,
             text_content=text_content,
             extracted_skills=skills,
+            extracted_education=education_list,  # Store education as list
+            extracted_experience=experience,
             status="processed"
         )
         
@@ -213,21 +235,20 @@ async def upload_and_rank_resumes(
         resume_id = result['resume_id']
         score = result['score']
         summary = result['summary']
+        skills = result.get('skills', [])  # Get skills from result
         
         logger.info(f"\n🏆 Rank #{rank}")
         logger.info(f"  Resume ID: {resume_id}")
         logger.info(f"  Score: {score:.4f}")
-        logger.info(f"  Summary: {summary[:100]}...")
+        logger.info(f"  Summary: {summary}")
+        logger.info(f"  Skills: {', '.join(skills) if skills else 'No skills extracted'}")
         
-        # Get resume to extract skills
-        resume = db.query(Resume).filter(Resume.id == resume_id).first()
-        
-        # Create match record
+        # Create match record with skills from result
         match = Match(
             job_id=job.id,
             resume_id=resume_id,
             match_score=int(score * 100),  # Convert to percentage
-            skills_match={"matched_skills": resume.extracted_skills if resume else []},
+            skills_match={"matched_skills": skills},  # Use skills from RAG result
             summary=summary,
             status="ranked"
         )
@@ -346,6 +367,16 @@ async def upload_resumes(
             # Extract skills using RAG
             skills = rag_service.extract_skills(text_content)
             
+            # Extract education
+            education = rag_service.extract_education(text_content)
+            # Wrap in list to match schema expectation
+            education_list = [education] if education else []
+            logger.info(f"  🎓 Education extracted: {education.get('degree', 'Not found') if education else 'Not found'}")
+            
+            # Extract contact information (name, email, phone)
+            contact_info = rag_service.extract_contact_info(text_content)
+            logger.info(f"  📧 Contact info extracted: Name={contact_info.get('name', 'Not found')}, Email={contact_info.get('email', 'Not found')}")
+            
             # Add to vector store
             rag_service.add_to_vector_store(chunks)
             
@@ -363,11 +394,15 @@ async def upload_resumes(
         resume = Resume(
             user_id=current_user.id,
             job_id=job_id,
+            candidate_name=contact_info.get('name'),
+            candidate_email=contact_info.get('email'),
+            candidate_phone=contact_info.get('phone'),
             file_name=file.filename,
             file_path=file_path,
             file_size=file_size,
             text_content=text_content,
             extracted_skills=skills,
+            extracted_education=education_list,  # Store education as list
             status="processed"
         )
         
@@ -387,15 +422,44 @@ async def upload_resumes(
     return uploaded_files
 
 
+
+def get_or_create_demo_user(db: Session):
+    """Helper to get or create the demo user"""
+    demo_user = db.query(User).filter(User.email == "demo@example.com").first()
+    if not demo_user:
+        from app.auth import get_password_hash
+        demo_user = User(
+            email="demo@example.com",
+            username="demo",
+            hashed_password=get_password_hash("demo123"),
+            full_name="Demo User",
+            is_active=True
+        )
+        db.add(demo_user)
+        db.commit()
+        db.refresh(demo_user)
+    return demo_user
+
+
 @router.get("/", response_model=List[ResumeResponse])
 def get_resumes(
     skip: int = 0,
     limit: int = 100,
     job_id: Optional[int] = None,
-    current_user: User = Depends(get_current_active_user),
+    current_user: Optional[User] = Depends(get_optional_current_user),
     db: Session = Depends(get_db)
 ):
     """Get all resumes for current user, ordered by most recent first"""
+    
+    # Handle authentication (demo mode support)
+    if not current_user:
+        if not settings.ENABLE_DEMO_MODE:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Authentication required"
+            )
+        current_user = get_or_create_demo_user(db)
+
     query = db.query(Resume).filter(Resume.user_id == current_user.id)
     
     if job_id:
@@ -409,10 +473,20 @@ def get_resumes(
 @router.get("/{resume_id}", response_model=ResumeResponse)
 def get_resume(
     resume_id: int,
-    current_user: User = Depends(get_current_active_user),
+    current_user: Optional[User] = Depends(get_optional_current_user),
     db: Session = Depends(get_db)
 ):
     """Get a specific resume"""
+    
+    # Handle authentication (demo mode support)
+    if not current_user:
+        if not settings.ENABLE_DEMO_MODE:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Authentication required"
+            )
+        current_user = get_or_create_demo_user(db)
+
     resume = db.query(Resume).filter(
         Resume.id == resume_id,
         Resume.user_id == current_user.id
@@ -424,16 +498,41 @@ def get_resume(
             detail="Resume not found"
         )
     
+    # Extract contact info if missing (for old resumes)
+    if not resume.candidate_name and resume.text_content:
+        try:
+            contact_info = rag_service.extract_contact_info(resume.text_content)
+            if contact_info.get('name'):
+                resume.candidate_name = contact_info.get('name')
+            if not resume.candidate_email and contact_info.get('email'):
+                resume.candidate_email = contact_info.get('email')
+            if not resume.candidate_phone and contact_info.get('phone'):
+                resume.candidate_phone = contact_info.get('phone')
+            db.commit()
+            db.refresh(resume)
+        except Exception as e:
+            logger.warning(f"Failed to extract contact info for resume {resume_id}: {e}")
+    
     return resume
 
 
 @router.get("/{resume_id}/download")
 def download_resume(
     resume_id: int,
-    current_user: User = Depends(get_current_active_user),
+    current_user: Optional[User] = Depends(get_optional_current_user),
     db: Session = Depends(get_db)
 ):
     """Download/view a resume PDF file"""
+    
+    # Handle authentication (demo mode support)
+    if not current_user:
+        if not settings.ENABLE_DEMO_MODE:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Authentication required"
+            )
+        current_user = get_or_create_demo_user(db)
+
     resume = db.query(Resume).filter(
         Resume.id == resume_id,
         Resume.user_id == current_user.id
@@ -464,10 +563,20 @@ def download_resume(
 @router.delete("/{resume_id}")
 def delete_resume(
     resume_id: int,
-    current_user: User = Depends(get_current_active_user),
+    current_user: Optional[User] = Depends(get_optional_current_user),
     db: Session = Depends(get_db)
 ):
     """Delete a resume"""
+    
+    # Handle authentication (demo mode support)
+    if not current_user:
+        if not settings.ENABLE_DEMO_MODE:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Authentication required"
+            )
+        current_user = get_or_create_demo_user(db)
+
     resume = db.query(Resume).filter(
         Resume.id == resume_id,
         Resume.user_id == current_user.id
@@ -493,10 +602,20 @@ def delete_resume(
 @router.get("/{resume_id}/matches", response_model=List[MatchResponse])
 def get_resume_matches(
     resume_id: int,
-    current_user: User = Depends(get_current_active_user),
+    current_user: Optional[User] = Depends(get_optional_current_user),
     db: Session = Depends(get_db)
 ):
     """Get all matches for a specific resume"""
+    
+    # Handle authentication (demo mode support)
+    if not current_user:
+        if not settings.ENABLE_DEMO_MODE:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Authentication required"
+            )
+        current_user = get_or_create_demo_user(db)
+
     resume = db.query(Resume).filter(
         Resume.id == resume_id,
         Resume.user_id == current_user.id
@@ -510,3 +629,228 @@ def get_resume_matches(
     
     matches = db.query(Match).filter(Match.resume_id == resume_id).all()
     return matches
+
+
+from pydantic import BaseModel
+
+class CompareRequest(BaseModel):
+    resume_id_1: int
+    resume_id_2: int
+
+
+@router.post("/compare")
+def compare_resumes(
+    request: CompareRequest,
+    current_user: Optional[User] = Depends(get_optional_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Compare two resumes side-by-side with detailed analysis.
+    
+    Returns:
+    - Basic info for both candidates
+    - Skill comparison (common vs unique)
+    - Experience comparison
+    - Education comparison
+    - Match scores (if available)
+    - Cosine similarity
+    - Recommendation
+    """
+    
+    # Handle authentication (demo mode support)
+    if not current_user:
+        if not settings.ENABLE_DEMO_MODE:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Authentication required"
+            )
+        current_user = get_or_create_demo_user(db)
+    
+    import re
+    from sklearn.feature_extraction.text import TfidfVectorizer
+    from sklearn.metrics.pairwise import cosine_similarity
+    import numpy as np
+    
+    resume_id_1 = request.resume_id_1
+    resume_id_2 = request.resume_id_2
+    
+    logger.info(f"📊 Comparing resumes: {resume_id_1} vs {resume_id_2}")
+    
+    # Fetch both resumes
+    resume_1 = db.query(Resume).filter(
+        Resume.id == resume_id_1,
+        Resume.user_id == current_user.id
+    ).first()
+    
+    resume_2 = db.query(Resume).filter(
+        Resume.id == resume_id_2,
+        Resume.user_id == current_user.id
+    ).first()
+    
+    if not resume_1:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Resume {resume_id_1} not found"
+        )
+    
+    if not resume_2:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Resume {resume_id_2} not found"
+        )
+    
+    # Get match scores if available
+    match_1 = db.query(Match).filter(Match.resume_id == resume_id_1).first()
+    match_2 = db.query(Match).filter(Match.resume_id == resume_id_2).first()
+    
+    # Extract candidate names from text or filename
+    def extract_name(resume):
+        if hasattr(resume, 'candidate_name') and resume.candidate_name:
+            return resume.candidate_name
+        return resume.file_name.replace('.pdf', '').replace('_', ' ').title()
+    
+    # Extract experience from text using regex
+    def extract_experience(resume):
+        # First check extracted_experience JSON
+        if resume.extracted_experience:
+            if isinstance(resume.extracted_experience, dict):
+                years = resume.extracted_experience.get('years')
+                if years:
+                    return f"{years} years"
+            elif isinstance(resume.extracted_experience, list):
+                return f"{len(resume.extracted_experience)} positions"
+        
+        # Fallback: parse from text using RAG service
+        try:
+            exp_data = rag_service.extract_experience(resume.text_content)
+            if exp_data and 'years' in exp_data:
+                return f"{exp_data['years']} years"
+        except Exception:
+            pass
+            
+        return "Not specified"
+    
+    # Extract education from JSON or text
+    def extract_education(resume):
+        # First check extracted_education JSON
+        if resume.extracted_education:
+            if isinstance(resume.extracted_education, dict):
+                degree = resume.extracted_education.get('degree')
+                if degree and degree != "Not specified":
+                    # Expand abbreviations
+                    degree = degree.replace("Ms", "Master's")
+                    degree = degree.replace("ms.", "Master's")
+                    degree = degree.replace("M.S", "Master's")
+                    degree = degree.replace("Bs", "Bachelor's")
+                    degree = degree.replace("bs.", "Bachelor's")
+                    degree = degree.replace("B.S", "Bachelor's")
+                    return degree
+            elif isinstance(resume.extracted_education, list) and len(resume.extracted_education) > 0:
+                degree = resume.extracted_education[0].get('degree', 'Not specified')
+                # Expand abbreviations
+                degree = degree.replace("Ms", "Master's")
+                degree = degree.replace("ms.", "Master's")
+                return degree
+        
+        # Fallback: parse from text with better patterns
+        text = resume.text_content
+        
+        # Comprehensive degree patterns
+        degree_patterns = [
+            # PhD patterns
+            (r'(?:ph\.?d\.?|doctor\s+of\s+philosophy|doctorate)\s+(?:in\s+)?([a-zA-Z\s&]+?)(?:\s+from|\s+at|\s+-|\s+\||,|\n|$)', "PhD"),
+            # Master's patterns - more comprehensive
+            (r'(?:m\.?s\.?c?\.?|master(?:\'s)?(?:\s+of\s+science)?|m\.?tech\.?|m\.?eng\.?|mba|m\.?b\.?a\.?)\s+(?:in\s+|of\s+)?([a-zA-Z\s&]+?)(?:\s+from|\s+at|\s+-|\s+\||,|\n|$)', "Master's"),
+            # Bachelor's patterns
+            (r'(?:b\.?s\.?c?\.?|bachelor(?:\'s)?(?:\s+of\s+science)?|b\.?tech\.?|b\.?eng\.?|b\.?e\.?)\s+(?:in\s+|of\s+)?([a-zA-Z\s&]+?)(?:\s+from|\s+at|\s+-|\s+\||,|\n|$)', "Bachelor's"),
+            # Associate/Diploma
+            (r'(associate|diploma)\s+(?:in\s+|of\s+)?([a-zA-Z\s&]+?)(?:\s+from|\s+at|\s+-|\s+\||,|\n|$)', "Associate"),
+        ]
+        
+        for pattern, degree_type in degree_patterns:
+            match = re.search(pattern, text, re.IGNORECASE)
+            if match:
+                if match.groups():
+                    field = match.group(1).strip()
+                    # Clean up field
+                    field = re.sub(r'\s+(from|at|in|of|and)$', '', field, flags=re.IGNORECASE)
+                    field = field.strip()
+                    if field and len(field) > 2:  # Valid field name
+                        return f"{degree_type} in {field.title()}"
+                return degree_type
+        
+        return "Not specified"
+    
+    # Calculate cosine similarity between resume texts
+    def calculate_cosine_similarity(text1, text2):
+        try:
+            vectorizer = TfidfVectorizer(max_features=1000, stop_words='english')
+            tfidf_matrix = vectorizer.fit_transform([text1, text2])
+            similarity = cosine_similarity(tfidf_matrix[0:1], tfidf_matrix[1:2])[0][0]
+            return round(similarity * 100, 1)  # Convert to percentage
+        except:
+            return None
+    
+    # Skill analysis
+    skills_1 = set(resume_1.extracted_skills or [])
+    skills_2 = set(resume_2.extracted_skills or [])
+    
+    common_skills = list(skills_1 & skills_2)
+    unique_skills_1 = list(skills_1 - skills_2)
+    unique_skills_2 = list(skills_2 - skills_1)
+    
+    # Calculate skill match percentage
+    total_skills = len(skills_1 | skills_2)
+    skill_overlap = (len(common_skills) / total_skills * 100) if total_skills > 0 else 0
+    
+    # Calculate cosine similarity
+    cosine_sim = calculate_cosine_similarity(resume_1.text_content, resume_2.text_content)
+    
+    # Generate recommendation
+    recommendation = ""
+    if match_1 and match_2:
+        score_diff = match_1.match_score - match_2.match_score
+        if abs(score_diff) < 5:
+            recommendation = "Both candidates are equally matched"
+        elif score_diff > 0:
+            recommendation = f"Candidate 1 has {abs(round(score_diff))}% higher match score"
+        else:
+            recommendation = f"Candidate 2 has {abs(round(score_diff))}% higher match score"
+    elif cosine_sim and cosine_sim > 70:
+        recommendation = "Both candidates have very similar profiles"
+    elif len(common_skills) > len(unique_skills_1) and len(common_skills) > len(unique_skills_2):
+        recommendation = "Both candidates have similar skill sets"
+    elif len(skills_1) > len(skills_2):
+        recommendation = "Candidate 1 has more diverse skills"
+    else:
+        recommendation = "Candidate 2 has more diverse skills"
+    
+    return {
+        "candidate_1": {
+            "id": resume_1.id,
+            "name": extract_name(resume_1),
+            "experience": extract_experience(resume_1),
+            "education": extract_education(resume_1),
+            "skills": list(skills_1),
+            "match_score": round(match_1.match_score, 1) if match_1 else None,  # Round to 1 decimal
+            "file_name": resume_1.file_name
+        },
+        "candidate_2": {
+            "id": resume_2.id,
+            "name": extract_name(resume_2),
+            "experience": extract_experience(resume_2),
+            "education": extract_education(resume_2),
+            "skills": list(skills_2),
+            "match_score": round(match_2.match_score, 1) if match_2 else None,  # Round to 1 decimal
+            "file_name": resume_2.file_name
+        },
+        "comparison": {
+            "common_skills": common_skills,
+            "unique_skills_1": unique_skills_1,
+            "unique_skills_2": unique_skills_2,
+            "skill_overlap_percentage": round(skill_overlap, 1),
+            "match_score_diff": round(match_1.match_score - match_2.match_score, 1) if (match_1 and match_2) else None,
+            "cosine_similarity": cosine_sim,  # NEW: Text similarity
+            "recommendation": recommendation
+        }
+    }

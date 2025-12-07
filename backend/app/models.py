@@ -17,6 +17,7 @@ class User(Base):
     company = Column(String, nullable=True)  # Company name
     role = Column(String, nullable=True)  # Job role/title
     is_active = Column(Boolean, default=True)
+    
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     

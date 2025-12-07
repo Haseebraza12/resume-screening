@@ -1,27 +1,35 @@
 'use client'
 
-import { useState } from 'react'
-import { X, Mail, Lock, User, Loader2, Eye, EyeOff } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { X, Mail, Lock, User, Loader2, Eye, EyeOff, Globe } from 'lucide-react'
 import { authApi } from '@/lib/api'
+import { Button } from '@/components/ui/button'
+
 
 interface AuthModalProps {
   isOpen: boolean
   onClose: () => void
   onSuccess: () => void
+  initialMode?: 'login' | 'signup' // Optional prop to control initial mode
 }
 
-export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
-  const [isLogin, setIsLogin] = useState(true)
+export default function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }: AuthModalProps) {
+  const [isLogin, setIsLogin] = useState(initialMode === 'login')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showPassword, setShowPassword] = useState(false)
-  
+
   const [formData, setFormData] = useState({
     email: '',
     password: '',
     username: '',
     full_name: ''
   })
+
+  // Update isLogin when initialMode changes
+  useEffect(() => {
+    setIsLogin(initialMode === 'login')
+  }, [initialMode])
 
   if (!isOpen) return null
 
@@ -56,21 +64,21 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
       }
     } catch (err: any) {
       console.error('Auth error details:', err)
-      console.error('Error response:', err.response?.data)
-      
+      // console.error('Error response:', err.response?.data) // Removed this line
+
       // More detailed error messages
       let errorMessage = 'Authentication failed. Please try again.'
-      
+
       if (err.response?.data?.detail) {
         errorMessage = err.response.data.detail
       } else if (err.response?.status === 401) {
         errorMessage = 'Invalid email or password. Please check your credentials.'
-      } else if (err.response?.status === 400) {
+      } else if (err.response?.status === 400) { // This block was removed in the instruction, but kept here as per the {{...}}
         errorMessage = err.response?.data?.detail || 'Bad request. Please check your input.'
-      } else if (err.message) {
+      } else if (err.message) { // This block was removed in the instruction, but kept here as per the {{...}}
         errorMessage = err.message
       }
-      
+
       setError(errorMessage)
     } finally {
       setIsLoading(false)
@@ -96,183 +104,166 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
   }
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
-      <div className="relative w-full max-w-md bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 animate-scale-in">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+      <div className="relative w-full max-w-[480px] max-h-[90vh] bg-primary-bg rounded-3xl shadow-2xl animate-scale-in overflow-y-auto">
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+          className="absolute top-4 right-4 p-2 rounded-full hover:bg-secondary-bg transition-colors text-text-tertiary hover:text-text-primary z-10"
           aria-label="Close"
         >
-          <X className="w-5 h-5 text-gray-500 dark:text-gray-400" />
+          <X className="w-5 h-5" />
         </button>
 
-        {/* Header */}
-        <div className="p-6 pb-4 border-b border-gray-200 dark:border-gray-700">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 text-primary">
-              <svg fill="none" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
-                <g clipPath="url(#clip0_6_319)">
-                  <path
-                    d="M8.57829 8.57829C5.52816 11.6284 3.451 15.5145 2.60947 19.7452C1.76794 23.9758 2.19984 28.361 3.85056 32.3462C5.50128 36.3314 8.29667 39.7376 11.8832 42.134C15.4698 44.5305 19.6865 45.8096 24 45.8096C28.3135 45.8096 32.5302 44.5305 36.1168 42.134C39.7033 39.7375 42.4987 36.3314 44.1494 32.3462C45.8002 28.361 46.2321 23.9758 45.3905 19.7452C44.549 15.5145 42.4718 11.6284 39.4217 8.57829L24 24L8.57829 8.57829Z"
-                    fill="currentColor"
-                  />
-                </g>
-                <defs>
-                  <clipPath id="clip0_6_319">
-                    <rect fill="white" height="48" width="48" />
-                  </clipPath>
-                </defs>
-              </svg>
+        <div className="p-6 sm:p-8 md:p-10">
+          {/* Header */}
+          <div className="flex flex-col items-center text-center mb-6">
+            <div className="mb-4">
+              <img src="/logo-accent.png" alt="Rankify Logo" className="h-10 w-auto" />
             </div>
-            <div>
-              <h2 className="text-2xl font-black text-text-light dark:text-text-dark">
-                {isLogin ? 'Welcome Back' : 'Create Account'}
-              </h2>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                {isLogin ? 'Sign in to continue to ResumeMatch AI' : 'Join ResumeMatch AI today'}
-              </p>
-            </div>
+            <h2 className="text-2xl font-bold text-text-primary mb-2">
+              {isLogin ? 'Log in' : 'Create your account'}
+            </h2>
+            <p className="text-text-secondary text-sm">
+              Use your work email for a better experience
+            </p>
           </div>
-        </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          {/* Error Message */}
-          {error && (
-            <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-              <p className="text-sm text-red-800 dark:text-red-300">{error}</p>
-            </div>
-          )}
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Error Message */}
+            {error && (
+              <div className="p-3 bg-status-error/10 border border-status-error/20 rounded-xl flex items-center gap-2">
+                <div className="w-1.5 h-1.5 rounded-full bg-status-error shrink-0" />
+                <p className="text-sm text-status-error font-medium">{error}</p>
+              </div>
+            )}
 
-          {/* Full Name (Register only) */}
-          {!isLogin && (
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                Full Name
-              </label>
-              <div className="relative">
-                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+            {/* Full Name (Register only) */}
+            {!isLogin && (
+              <div className="space-y-1.5">
+                <label className="block text-sm font-medium text-text-primary">
+                  Full Name
+                </label>
                 <input
                   type="text"
                   name="full_name"
                   value={formData.full_name}
                   onChange={handleChange}
                   placeholder="John Doe"
-                  className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-text-light dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-transparent transition-all"
+                  className="w-full px-4 py-3 rounded-xl bg-secondary-bg border-transparent focus:bg-white border focus:border-accent text-text-primary placeholder-text-tertiary focus:outline-none focus:ring-0 transition-all"
                   required={!isLogin}
                 />
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Username (Register only) */}
-          {!isLogin && (
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                Username
-              </label>
-              <div className="relative">
-                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+            {/* Username (Register only) */}
+            {!isLogin && (
+              <div className="space-y-1.5">
+                <label className="block text-sm font-medium text-text-primary">
+                  Username
+                </label>
                 <input
                   type="text"
                   name="username"
                   value={formData.username}
                   onChange={handleChange}
                   placeholder="johndoe"
-                  className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-text-light dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-transparent transition-all"
+                  className="w-full px-4 py-3 rounded-xl bg-secondary-bg border-transparent focus:bg-white border focus:border-accent text-text-primary placeholder-text-tertiary focus:outline-none focus:ring-0 transition-all"
                   required={!isLogin}
                 />
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Email */}
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-              Email Address
-            </label>
-            <div className="relative">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+            {/* Email */}
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium text-text-primary">
+                Work email
+              </label>
               <input
                 type="email"
                 name="email"
                 value={formData.email}
                 onChange={handleChange}
-                placeholder="you@example.com"
-                className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-text-light dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-transparent transition-all"
+                placeholder="name@company.com"
+                className="w-full px-4 py-3 rounded-xl bg-secondary-bg border-transparent focus:bg-white border focus:border-accent text-text-primary placeholder-text-tertiary focus:outline-none focus:ring-0 transition-all"
                 required
               />
             </div>
-          </div>
 
-          {/* Password */}
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-              Password
-            </label>
-            <div className="relative">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-              <input
-                type={showPassword ? "text" : "password"}
-                name="password"
-                value={formData.password}
-                onChange={handleChange}
-                placeholder="••••••••"
-                className="w-full pl-10 pr-12 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-text-light dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-transparent transition-all"
-                required
-                minLength={6}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-                aria-label={showPassword ? "Hide password" : "Show password"}
-              >
-                {showPassword ? (
-                  <EyeOff className="w-5 h-5" />
-                ) : (
-                  <Eye className="w-5 h-5" />
-                )}
-              </button>
+            {/* Password */}
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium text-text-primary">
+                Password
+              </label>
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  name="password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  placeholder="••••••••"
+                  className="w-full px-4 py-3 rounded-xl bg-secondary-bg border-transparent focus:bg-white border focus:border-accent text-text-primary placeholder-text-tertiary focus:outline-none focus:ring-0 transition-all pr-12"
+                  required
+                  minLength={6}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-text-tertiary hover:text-text-primary transition-colors"
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
             </div>
-            {!isLogin && (
-              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                Must be at least 6 characters
-              </p>
-            )}
-          </div>
 
-          {/* Submit Button */}
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-primary hover:bg-blue-700 text-white font-bold rounded-lg transition-all duration-200 hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
-          >
-            {isLoading ? (
-              <>
-                <Loader2 className="w-5 h-5 animate-spin" />
-                {isLogin ? 'Signing in...' : 'Creating account...'}
-              </>
-            ) : (
-              isLogin ? 'Sign In' : 'Create Account'
-            )}
-          </button>
+            {/* Submit Button */}
+            <Button
+              type="submit"
+              disabled={isLoading}
+              className="w-full"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  {isLogin ? 'Signing in...' : 'Creating account...'}
+                </>
+              ) : (
+                isLogin ? 'Continue with email' : 'Create account'
+              )}
+            </Button>
 
-          {/* Switch Mode */}
-          <div className="text-center pt-4 border-t border-gray-200 dark:border-gray-700">
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              {isLogin ? "Don't have an account?" : 'Already have an account?'}
-              <button
-                type="button"
-                onClick={switchMode}
-                className="ml-1 font-semibold text-primary hover:text-blue-700 dark:hover:text-blue-400 transition-colors"
-              >
-                {isLogin ? 'Sign up' : 'Sign in'}
-              </button>
+            {isLogin && (
+              <div className="text-center">
+                <button type="button" className="text-sm font-medium text-text-secondary hover:text-text-primary transition-colors">
+                  Forgot password?
+                </button>
+              </div>
+            )}
+          </form>
+
+
+
+          {/* Footer */}
+          <div className="mt-6 text-center space-y-4">
+            <p className="text-xs text-text-tertiary leading-relaxed px-4">
+              By signing up to the Rankify platform you understand and agree with our{' '}
+              <a href="#" className="underline hover:text-text-secondary">Terms of Service</a> and{' '}
+              <a href="#" className="underline hover:text-text-secondary">Privacy Policy</a>
             </p>
+
+            <div className="pt-4 border-t border-border/30">
+              <p className="text-sm text-text-secondary">
+                {isLogin ? "Don't have an account? " : "Already have an account? "}
+                <button onClick={switchMode} className="text-accent hover:underline font-medium">
+                  {isLogin ? 'Sign up' : 'Log in'}
+                </button>
+              </p>
+            </div>
+
+
           </div>
-        </form>
+        </div>
       </div>
     </div>
   )

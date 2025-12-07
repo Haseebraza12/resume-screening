@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 
@@ -141,6 +141,20 @@ class ResumeResponse(ResumeBase):
     extracted_education: Optional[List[Dict[str, str]]] = []
     status: str
     created_at: datetime
+    
+    @field_validator('extracted_education', mode='before')
+    @classmethod
+    def normalize_education(cls, v):
+        """Convert dict to list for backward compatibility with old records"""
+        if v is None:
+            return []
+        if isinstance(v, dict):
+            # Old format: single dict, wrap in list
+            return [v]
+        if isinstance(v, list):
+            # New format: already a list
+            return v
+        return []
     
     class Config:
         from_attributes = True

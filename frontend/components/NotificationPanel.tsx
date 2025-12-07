@@ -128,19 +128,11 @@ export function NotificationPanel() {
       {/* Notification Bell Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="relative flex cursor-pointer items-center justify-center rounded-full h-10 w-10 hover:bg-black/5 dark:hover:bg-white/5 text-text-light dark:text-text-dark"
+        className="text-text-tertiary hover:text-text-primary transition-colors relative"
       >
-        <Bell className="w-5 h-5" />
+        <Bell className="w-6 h-6 mt-2 stroke-[1.5]" />
         {unreadCount > 0 && (
-          <>
-            <span className="absolute top-1 right-1.5 flex h-2.5 w-2.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-75" />
-              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-accent" />
-            </span>
-            <span className="absolute -top-1 -right-1 flex items-center justify-center min-w-[1.25rem] h-5 px-1 text-xs font-bold text-white bg-red-500 rounded-full">
-              {unreadCount > 99 ? '99+' : unreadCount}
-            </span>
-          </>
+          <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-status-error rounded-full border-2 border-secondary-bg"></span>
         )}
       </button>
 
@@ -154,13 +146,13 @@ export function NotificationPanel() {
           />
 
           {/* Panel */}
-          <div className="absolute right-0 mt-2 w-96 max-h-[32rem] bg-white dark:bg-gray-800 rounded-lg shadow-2xl border border-gray-200 dark:border-gray-700 z-50 overflow-hidden flex flex-col">
+          <div className="absolute right-0 mt-2 w-96 max-h-[32rem] bg-primary-bg rounded-3xl shadow-2xl border border-border/30 z-50 overflow-hidden flex flex-col">
             {/* Header */}
-            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+            <div className="flex items-center justify-between p-4 border-b border-border/30">
               <div>
-                <h3 className="text-lg font-bold">Notifications</h3>
+                <h3 className="text-lg font-bold text-text-primary">Notifications</h3>
                 {unreadCount > 0 && (
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-text-secondary">
                     {unreadCount} unread
                   </p>
                 )}
@@ -169,7 +161,7 @@ export function NotificationPanel() {
                 {unreadCount > 0 && (
                   <button
                     onClick={handleMarkAllAsRead}
-                    className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                    className="p-2 hover:bg-secondary-bg rounded-xl transition-colors text-text-secondary hover:text-text-primary"
                     title="Mark all as read"
                   >
                     <CheckCheck className="w-4 h-4" />
@@ -177,7 +169,7 @@ export function NotificationPanel() {
                 )}
                 <button
                   onClick={() => setIsOpen(false)}
-                  className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                  className="p-2 hover:bg-secondary-bg rounded-xl transition-colors text-text-secondary hover:text-text-primary"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -185,25 +177,23 @@ export function NotificationPanel() {
             </div>
 
             {/* Filter */}
-            <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700">
+            <div className="px-4 py-2 border-b border-border/30">
               <div className="flex gap-2">
                 <button
                   onClick={() => setShowUnreadOnly(false)}
-                  className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
-                    !showUnreadOnly
-                      ? 'bg-primary text-white'
-                      : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
-                  }`}
+                  className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${!showUnreadOnly
+                    ? 'bg-primary text-white'
+                    : 'bg-secondary-bg text-text-secondary hover:text-text-primary'
+                    }`}
                 >
                   All
                 </button>
                 <button
                   onClick={() => setShowUnreadOnly(true)}
-                  className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
-                    showUnreadOnly
-                      ? 'bg-primary text-white'
-                      : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
-                  }`}
+                  className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${showUnreadOnly
+                    ? 'bg-primary text-white'
+                    : 'bg-secondary-bg text-text-secondary hover:text-text-primary'
+                    }`}
                 >
                   Unread ({unreadCount})
                 </button>
@@ -217,21 +207,20 @@ export function NotificationPanel() {
                   <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
                 </div>
               ) : notifications.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-32 text-gray-500">
+                <div className="flex flex-col items-center justify-center h-32 text-text-tertiary">
                   <Bell className="w-12 h-12 mb-2 opacity-20" />
                   <p className="text-sm">
                     {showUnreadOnly ? 'No unread notifications' : 'No notifications yet'}
                   </p>
                 </div>
               ) : (
-                <div className="divide-y divide-gray-200 dark:divide-gray-700">
+                <div className="divide-y divide-border/30">
                   {notifications.map((notification) => (
                     <div
                       key={notification.id}
                       onClick={() => handleNotificationClick(notification)}
-                      className={`p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer transition-colors ${
-                        !notification.is_read ? 'bg-blue-50/50 dark:bg-blue-900/10' : ''
-                      }`}
+                      className={`p-4 hover:bg-secondary-bg/50 cursor-pointer transition-colors group ${!notification.is_read ? 'bg-primary/5' : ''
+                        }`}
                     >
                       <div className="flex gap-3">
                         <div className="flex-shrink-0 mt-0.5">
@@ -239,26 +228,26 @@ export function NotificationPanel() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-start justify-between gap-2">
-                            <h4 className={`text-sm font-medium ${!notification.is_read ? 'font-bold' : ''}`}>
+                            <h4 className={`text-sm ${!notification.is_read ? 'font-bold text-text-primary' : 'font-medium text-text-secondary'}`}>
                               {notification.title}
                             </h4>
                             {!notification.is_read && (
-                              <span className="flex-shrink-0 w-2 h-2 bg-blue-500 rounded-full" />
+                              <span className="flex-shrink-0 w-2 h-2 bg-primary rounded-full" />
                             )}
                           </div>
-                          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 line-clamp-2">
+                          <p className="text-sm text-text-secondary mt-1 line-clamp-2">
                             {notification.message}
                           </p>
                           <div className="flex items-center justify-between mt-2">
-                            <span className="text-xs text-gray-500">
+                            <span className="text-xs text-text-tertiary">
                               {getTimeAgo(notification.created_at)}
                             </span>
                             <button
                               onClick={(e) => handleDeleteNotification(notification.id, e)}
-                              className="p-1 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors opacity-0 group-hover:opacity-100"
+                              className="p-1 hover:bg-secondary-bg rounded transition-colors opacity-0 group-hover:opacity-100 text-text-tertiary hover:text-status-error"
                               title="Delete notification"
                             >
-                              <Trash2 className="w-3 h-3 text-gray-500" />
+                              <Trash2 className="w-3 h-3" />
                             </button>
                           </div>
                         </div>

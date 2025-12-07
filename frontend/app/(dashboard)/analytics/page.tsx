@@ -1,9 +1,10 @@
 'use client'
 
-import { Download, TrendingUp, Users, Briefcase, FileText, Target } from 'lucide-react'
+import { Download, TrendingUp, Users, Briefcase, FileText, Target, Loader2, BarChart2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { analyticsApi, jobApi, DashboardStats } from '@/lib/api'
 import RankedCandidatesDisplay from '@/components/RankedCandidatesDisplay'
+import { Button } from '@/components/ui/button'
 
 interface SkillDistribution {
   skill: string
@@ -155,8 +156,8 @@ export default function AnalyticsPage() {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-gray-600 dark:text-gray-400">Loading analytics...</p>
+          <Loader2 className="w-12 h-12 animate-spin text-primary mx-auto mb-4" />
+          <p className="text-text-secondary">Loading analytics...</p>
         </div>
       </div>
     )
@@ -166,12 +167,12 @@ export default function AnalyticsPage() {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center max-w-md">
-          <div className="text-red-500 text-5xl mb-4">⚠️</div>
-          <h2 className="text-2xl font-bold mb-2">Error Loading Analytics</h2>
-          <p className="text-gray-600 dark:text-gray-400 mb-4">{error}</p>
+          <div className="text-status-error text-5xl mb-4">⚠️</div>
+          <h2 className="text-2xl font-bold mb-2 text-text-primary">Error Loading Analytics</h2>
+          <p className="text-text-secondary mb-4">{error}</p>
           <button
-            onClick={fetchAnalytics}
-            className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/90"
+            onClick={() => fetchAnalytics()}
+            className="px-6 py-2 bg-primary text-white rounded-xl hover:bg-primary/90 font-bold transition-all"
           >
             Try Again
           </button>
@@ -185,80 +186,81 @@ export default function AnalyticsPage() {
   const maxSkillCount = Math.max(...skills.map(s => s.count), 1)
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 max-w-screen-cl mx-auto p-6 min-h-screen">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-4xl font-black">Analytics Dashboard</h1>
-          <p className="text-gray-500 dark:text-gray-400 mt-1">
+          <h1 className="text-4xl font-bold text-text-primary">Analytics Dashboard</h1>
+          <p className="text-text-secondary mt-1">
             View key metrics and performance for your recruitment pipeline.
           </p>
         </div>
-        <button
+        <Button
+          variant="default"
           onClick={exportData}
-          className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-primary text-white hover:bg-primary/90 transition-colors"
+          className="flex"
         >
           <Download className="w-5 h-5" />
           <span className="font-bold text-sm">Export Data</span>
-        </button>
+        </Button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="glass-card rounded-xl p-6">
+        <div className="bg-primary-bg rounded-3xl shadow-sm p-6">
           <div className="flex items-center justify-between mb-2">
-            <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Jobs</p>
+            <p className="text-sm font-medium text-text-secondary">Total Jobs</p>
             <Briefcase className="w-5 h-5 text-primary" />
           </div>
-          <p className="text-3xl font-black">{stats?.total_jobs ?? 0}</p>
-          <p className="text-sm text-gray-500 mt-1">Available positions</p>
+          <p className="text-3xl font-bold text-text-primary">{stats?.total_jobs ?? 0}</p>
+          <p className="text-sm text-text-tertiary mt-1">Available positions</p>
         </div>
 
-        <div className="glass-card rounded-xl p-6">
+        <div className="bg-primary-bg rounded-3xl shadow-sm p-6">
           <div className="flex items-center justify-between mb-2">
-            <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Resumes</p>
+            <p className="text-sm font-medium text-text-secondary">Total Resumes</p>
             <FileText className="w-5 h-5 text-secondary" />
           </div>
-          <p className="text-3xl font-black">{stats?.total_resumes ?? 0}</p>
-          <p className="text-sm text-gray-500 mt-1">{stats?.pending_reviews ?? 0} pending review</p>
+          <p className="text-3xl font-bold text-text-primary">{stats?.total_resumes ?? 0}</p>
+          <p className="text-sm text-text-tertiary mt-1">{stats?.pending_reviews ?? 0} pending review</p>
         </div>
 
-        <div className="glass-card rounded-xl p-6">
+        <div className="bg-primary-bg rounded-3xl shadow-sm p-6">
           <div className="flex items-center justify-between mb-2">
-            <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Matches</p>
+            <p className="text-sm font-medium text-text-secondary">Total Matches</p>
             <Users className="w-5 h-5 text-accent" />
           </div>
-          <p className="text-3xl font-black">{stats?.total_matches ?? 0}</p>
-          <p className="text-sm text-gray-500 mt-1">{stats?.shortlisted ?? 0} shortlisted</p>
+          <p className="text-3xl font-bold text-text-primary">{stats?.total_matches ?? 0}</p>
+          <p className="text-sm text-text-tertiary mt-1">{stats?.shortlisted ?? 0} shortlisted</p>
         </div>
 
-        <div className="glass-card rounded-xl p-6">
+        <div className="bg-primary-bg rounded-3xl shadow-sm p-6">
           <div className="flex items-center justify-between mb-2">
-            <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Avg Match Score</p>
+            <p className="text-sm font-medium text-text-secondary">Avg Match Score</p>
             <Target className="w-5 h-5 text-purple-500" />
           </div>
-          <p className="text-3xl font-black">{stats?.avg_match_score ? Math.round(stats.avg_match_score) : 0}%</p>
-          <p className="text-sm text-gray-500 mt-1">
+          <p className="text-3xl font-bold text-text-primary">{stats?.avg_match_score ? Math.round(stats.avg_match_score) : 0}%</p>
+          <p className="text-sm text-text-tertiary mt-1">
             {stats && stats.avg_match_score >= 70 ? (
               <span className="flex items-center gap-1 text-green-600">
                 <TrendingUp className="w-4 h-4" />
                 Excellent
               </span>
             ) : (
-              <span className="text-gray-500">Fair quality</span>
+              <span className="text-text-tertiary">Fair quality</span>
             )}
           </p>
         </div>
       </div>
 
       {jobs.length > 0 && (
-        <div className="glass-card rounded-xl p-4">
+        <div className="bg-primary-bg rounded-3xl shadow-sm p-6">
           <div className="flex items-center gap-4">
-            <label className="text-sm font-medium text-gray-600 dark:text-gray-300">
+            <label className="text-sm font-medium text-text-secondary">
               Filter by Job:
             </label>
             <select
               value={selectedJob || ''}
               onChange={(e) => setSelectedJob(e.target.value ? Number(e.target.value) : undefined)}
-              className="px-4 py-2 rounded-lg bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary"
+              className="px-4 py-2 rounded-xl bg-secondary-bg border-transparent focus:bg-white border focus:border-accent text-text-primary text-sm font-medium focus:outline-none focus:ring-0 transition-all"
             >
               <option value="">All Jobs</option>
               {jobs.map((job) => (
@@ -276,20 +278,20 @@ export default function AnalyticsPage() {
           scoreDistribution={rankedCandidates.score_distribution}
         />
       ) : rankedCandidates && rankedCandidates.message ? (
-        <div className="glass-card rounded-xl p-12 text-center">
-          <div className="text-6xl mb-4">📊</div>
-          <p className="text-lg text-gray-600 dark:text-gray-400 mb-6">{rankedCandidates.message}</p>
+        <div className="bg-primary-bg rounded-3xl shadow-sm p-12 text-center">
+          <BarChart2 className="w-16 h-16 text-primary mx-auto mb-4" />
+          <p className="text-lg text-text-secondary mb-6">{rankedCandidates.message}</p>
           {rankedCandidates.message.includes("Upload resumes") && (
-            <a href="/upload" className="inline-block px-8 py-3 bg-primary text-white rounded-lg hover:bg-primary/90 font-bold">
+            <a href="/upload" className="inline-block px-8 py-3 bg-primary text-white rounded-2xl font-bold">
               Upload Resumes & Rank Candidates
             </a>
           )}
         </div>
       ) : (
-        <div className="glass-card rounded-xl p-12 text-center">
+        <div className="bg-primary-bg rounded-3xl shadow-sm p-12 text-center">
           <div className="text-6xl mb-4">🎯</div>
-          <p className="text-lg text-gray-600 dark:text-gray-400 mb-6">No ranked candidates yet.</p>
-          <a href="/upload" className="inline-block px-8 py-3 bg-primary text-white rounded-lg hover:bg-primary/90 font-bold">
+          <p className="text-lg text-text-secondary mb-6">No ranked candidates yet.</p>
+          <a href="/upload" className="inline-block px-8 py-3 bg-primary text-white rounded-2xl font-bold">
             Upload Resumes to Get Started
           </a>
         </div>
@@ -297,75 +299,75 @@ export default function AnalyticsPage() {
 
       {/* Existing Analytics Sections */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="glass-card rounded-xl p-6">
-          <h3 className="text-lg font-bold mb-4">Top Skills Distribution</h3>
+        <div className="bg-primary-bg rounded-3xl shadow-sm p-6">
+          <h3 className="text-lg font-bold mb-4 text-text-primary">Top Skills Distribution</h3>
           {skills.length > 0 ? (
             <div className="space-y-3">
               {skills.map((item, index) => (
                 <div key={index} className="space-y-1">
                   <div className="flex justify-between text-sm">
-                    <span className="font-medium">{item.skill}</span>
-                    <span className="text-gray-600 dark:text-gray-400">{item.count}</span>
+                    <span className="font-medium text-text-primary">{item.skill}</span>
+                    <span className="text-text-secondary">{item.count}</span>
                   </div>
-                  <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                  <div className="w-full bg-secondary-bg rounded-full h-2">
                     <div className="bg-primary h-2 rounded-full transition-all" style={{ width: `${(item.count / maxSkillCount) * 100}%` }} />
                   </div>
                 </div>
               ))}
             </div>
           ) : (
-            <p className="text-gray-500 text-center py-8">No skills data. Upload resumes to see insights.</p>
+            <p className="text-text-tertiary text-center py-8">No skills data. Upload resumes to see insights.</p>
           )}
         </div>
 
-        <div className="glass-card rounded-xl p-6">
-          <h3 className="text-lg font-bold mb-4">Match Quality Distribution</h3>
+        <div className="bg-primary-bg rounded-3xl shadow-sm p-6">
+          <h3 className="text-lg font-bold mb-4 text-text-primary">Match Quality Distribution</h3>
           {matchesData && matchesData.total_matches > 0 ? (
             <div className="space-y-4">
-              <div className="flex items-center justify-between p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
+              <div className="flex items-center justify-between p-4 bg-green-50 dark:bg-green-900/20 rounded-xl">
                 <div>
-                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">High (70-100%)</p>
-                  <p className="text-2xl font-black text-green-600">{matchesData.high_matches}</p>
+                  <p className="text-sm font-medium text-text-secondary">High (70-100%)</p>
+                  <p className="text-2xl font-bold text-green-600">{matchesData.high_matches}</p>
                 </div>
-                <div className="text-5xl">🎯</div>
+
               </div>
-              <div className="flex items-center justify-between p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
+              <div className="flex items-center justify-between p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-xl">
                 <div>
-                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Medium (40-69%)</p>
-                  <p className="text-2xl font-black text-yellow-600">{matchesData.medium_matches}</p>
+                  <p className="text-sm font-medium text-text-secondary">Medium (40-69%)</p>
+                  <p className="text-2xl font-bold text-yellow-600">{matchesData.medium_matches}</p>
                 </div>
-                <div className="text-5xl">📊</div>
+
               </div>
-              <div className="flex items-center justify-between p-4 bg-red-50 dark:bg-red-900/20 rounded-lg">
+              <div className="flex items-center justify-between p-4 bg-red-50 dark:bg-red-900/20 rounded-xl">
                 <div>
-                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Low (0-39%)</p>
-                  <p className="text-2xl font-black text-red-600">{matchesData.low_matches}</p>
+                  <p className="text-sm font-medium text-text-secondary">Low (0-39%)</p>
+                  <p className="text-2xl font-bold text-red-600">{matchesData.low_matches}</p>
                 </div>
-                <div className="text-5xl">📉</div>
+
               </div>
-              <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Average Match Score</p>
-                <p className="text-3xl font-black text-blue-600">{matchesData.average_score}%</p>
+              <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl">
+                <p className="text-sm font-medium text-text-secondary">Average Match Score</p>
+                <p className="text-3xl font-bold text-blue-600">{matchesData.average_score.toFixed(1)}%</p>
               </div>
             </div>
           ) : (
-            <p className="text-gray-500 text-center py-8">No matches yet. Process resumes first.</p>
+            <p className="text-text-tertiary text-center py-8">No matches yet. Process resumes first.</p>
           )}
         </div>
       </div>
 
       {stats.total_resumes === 0 && (
-        <div className="glass-card rounded-xl p-12 text-center">
+        <div className="bg-primary-bg rounded-3xl shadow-sm p-12 text-center">
           <div className="text-6xl mb-4">📊</div>
-          <h3 className="text-2xl font-bold mb-2">No Data Yet</h3>
-          <p className="text-gray-600 dark:text-gray-400 mb-6">
+          <h3 className="text-2xl font-bold mb-2 text-text-primary">No Data Yet</h3>
+          <p className="text-text-secondary mb-6">
             Start by uploading resumes and creating job postings to see analytics.
           </p>
           <div className="flex gap-4 justify-center">
-            <a href="/upload" className="px-6 py-3 bg-primary text-white rounded-lg font-bold hover:bg-primary/90">
+            <a href="/upload" className="px-6 py-3 bg-primary text-white rounded-xl font-bold hover:bg-primary/90 shadow-lg hover:shadow-xl transition-all">
               Upload Resumes
             </a>
-            <a href="/dashboard" className="px-6 py-3 bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg font-bold hover:bg-gray-300 dark:hover:bg-gray-600">
+            <a href="/dashboard" className="px-6 py-3 bg-secondary-bg text-text-primary rounded-xl font-bold hover:bg-secondary-bg/80 transition-all">
               Create Job
             </a>
           </div>

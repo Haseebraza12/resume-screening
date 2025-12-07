@@ -1,5 +1,8 @@
 'use client'
 
+import { HelpCircle, MessageCircle, ChevronRight } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+
 export default function HelpPage() {
   const faqs = [
     {
@@ -25,28 +28,32 @@ export default function HelpPage() {
   ]
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8 max-w-screen-cl mx-auto p-6 min-h-screen">
       <div>
-        <h1 className="text-3xl font-bold text-text-light dark:text-text-dark">
+        <h1 className="text-4xl font-bold text-text-primary">
           Help & Support
         </h1>
-        <p className="text-text-light/70 dark:text-text-dark/70 mt-2">
+        <p className="text-text-secondary mt-1">
           Frequently asked questions and guides
         </p>
       </div>
 
-      <div className="bg-card-light dark:bg-card-dark rounded-lg border border-border-light dark:border-border-dark p-6">
-        <h2 className="text-xl font-semibold text-text-light dark:text-text-dark mb-6">
-          Frequently Asked Questions
-        </h2>
-        
+      <div className="bg-primary-bg rounded-3xl shadow-sm border border-border/30 p-6">
+        <div className="flex items-center gap-3 mb-6">
+          <HelpCircle className="w-6 h-6 text-primary" />
+          <h2 className="text-xl font-bold text-text-primary">
+            Frequently Asked Questions
+          </h2>
+        </div>
+
         <div className="space-y-6">
           {faqs.map((faq, index) => (
-            <div key={index} className="pb-6 border-b border-border-light dark:border-border-dark last:border-0 last:pb-0">
-              <h3 className="text-lg font-medium text-text-light dark:text-text-dark mb-2">
+            <div key={index} className="pb-6 border-b border-border/30 last:border-0 last:pb-0">
+              <h3 className="text-lg font-bold text-text-primary mb-2 flex items-center gap-2">
+                <ChevronRight className="w-4 h-4 text-text-tertiary" />
                 {faq.question}
               </h3>
-              <p className="text-text-light/70 dark:text-text-dark/70">
+              <p className="text-text-secondary pl-6">
                 {faq.answer}
               </p>
             </div>
@@ -54,16 +61,27 @@ export default function HelpPage() {
         </div>
       </div>
 
-      <div className="bg-primary/10 rounded-lg border border-primary/20 p-6">
-        <h2 className="text-xl font-semibold text-text-light dark:text-text-dark mb-2">
-          Need More Help?
-        </h2>
-        <p className="text-text-light/70 dark:text-text-dark/70 mb-4">
-          Can't find what you're looking for? Contact our support team.
-        </p>
-        <button className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
-          Contact Support
-        </button>
+      <div className="bg-primary-bg rounded-3xl shadow-sm border border-border/30 p-8">
+        <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="flex items-start gap-4">
+            <div className="p-3 bg-primary/10 rounded-xl">
+              <MessageCircle className="w-8 h-8 text-primary" />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-text-primary mb-2">
+                Need More Help?
+              </h2>
+              <p className="text-text-secondary">
+                Can't find what you're looking for? Contact our support team for assistance.
+              </p>
+            </div>
+          </div>
+          <Button 
+          variant="default"
+          >
+            Contact Support
+          </Button>
+        </div>
       </div>
     </div>
   )

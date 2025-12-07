@@ -59,51 +59,47 @@ export default function JobsPage() {
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
           <Loader2 className="w-12 h-12 animate-spin text-primary mx-auto mb-4" />
-          <p className="text-gray-600">Loading jobs...</p>
+          <p className="text-text-secondary">Loading jobs...</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-screen-xl mx-auto p-6 min-h-screen">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-4xl font-black">Job Postings</h1>
-          <p className="text-gray-500 dark:text-gray-400 mt-1">
-            View and manage your job openings
-          </p>
-        </div>
+      <div>
+        <h1 className="text-4xl font-bold text-text-primary">Job Postings</h1>
+        <p className="text-text-secondary mt-2 text-base">
+          View and manage your job openings
+        </p>
       </div>
 
       {/* Search Bar */}
-      <div className="glass-card rounded-xl p-4">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+        <div className="flex items-center h-12 px-4 rounded-full bg-secondary-fg border border-border/30 gap-3 group focus-within:border-primary/50 transition-colors">
+          <Search className="w-5 h-5 text-text-secondary group-focus-within:text-primary transition-colors" />
           <input
             type="text"
             placeholder="Search jobs..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-transparent"
+            className="bg-transparent border-none focus:outline-none text-text-primary placeholder-text-tertiary w-full text-sm font-medium"
           />
         </div>
-      </div>
 
       {/* Error Message */}
       {error && (
-        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 text-red-700 dark:text-red-400">
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4 text-red-700 dark:text-red-400">
           {error}
         </div>
       )}
 
       {/* Jobs Grid */}
       {filteredJobs.length === 0 ? (
-        <div className="glass-card rounded-xl p-12 text-center">
-          <Briefcase className="w-16 h-16 mx-auto mb-4 text-gray-400" />
-          <h3 className="text-xl font-bold mb-2">No job postings yet</h3>
-          <p className="text-gray-500 mb-6">
+        <div className="bg-primary-bg rounded-3xl shadow-sm border border-border/30 p-12 text-center">
+          <Briefcase className="w-16 h-16 mx-auto mb-4 text-accent" />
+          <h3 className="text-xl font-bold mb-2 text-text-primary">No job postings yet</h3>
+          <p className="text-text-secondary mb-6">
             Jobs must be created manually via database
           </p>
         </div>
@@ -112,12 +108,12 @@ export default function JobsPage() {
           {filteredJobs.map((job) => (
             <div
               key={job.id}
-              className="glass-card rounded-xl p-6 hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
+              className="bg-primary-bg rounded-3xl shadow-sm hover:border border-border/30 p-6 transition-all duration-100"
             >
               <div className="flex justify-between items-start mb-4">
                 <div className="flex-1">
-                  <h3 className="text-xl font-bold mb-2">{job.title}</h3>
-                  <div className="flex items-center gap-4 text-sm text-gray-500">
+                  <h3 className="text-xl font-bold mb-2 text-text-primary">{job.title}</h3>
+                  <div className="flex items-center gap-4 text-sm text-text-secondary">
                     {job.location && (
                       <span className="flex items-center gap-1">
                         📍 {job.location}
@@ -130,12 +126,12 @@ export default function JobsPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   {job.status === 'active' ? (
-                    <span className="flex items-center gap-1 px-3 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-full text-sm">
+                    <span className="flex items-center gap-1 px-3 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-full text-sm font-medium">
                       <CheckCircle className="w-4 h-4" />
                       Active
                     </span>
                   ) : (
-                    <span className="flex items-center gap-1 px-3 py-1 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 rounded-full text-sm">
+                    <span className="flex items-center gap-1 px-3 py-1 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 rounded-full text-sm font-medium">
                       <XCircle className="w-4 h-4" />
                       {job.status}
                     </span>
@@ -143,12 +139,12 @@ export default function JobsPage() {
                 </div>
               </div>
 
-              <p className="text-gray-600 dark:text-gray-400 mb-4 line-clamp-3">
+              <p className="text-text-secondary mb-4 line-clamp-3">
                 {job.description}
               </p>
 
-              <div className="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-gray-700">
-                <div className="flex items-center gap-2 text-sm text-gray-500">
+              <div className="flex items-center justify-between pt-4 border-t border-border/30">
+                <div className="flex items-center gap-2 text-sm text-text-tertiary">
                   <Calendar className="w-4 h-4" />
                   {new Date(job.created_at).toLocaleDateString()}
                 </div>
@@ -156,24 +152,24 @@ export default function JobsPage() {
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => handleMatchAllResumes(job.id)}
-                    className="p-2 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-lg transition-colors"
+                    className="p-2 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-lg transition-colors group"
                     title="Match all resumes"
                   >
-                    <Users className="w-5 h-5 text-blue-600" />
+                    <Users className="w-5 h-5 text-blue-600 group-hover:scale-110 transition-transform" />
                   </button>
                   <Link
                     href={`/jobs/${job.id}`}
-                    className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                    className="p-2 hover:bg-secondary-bg rounded-lg transition-colors group"
                     title="View details"
                   >
-                    <Edit className="w-5 h-5 text-gray-600" />
+                    <Edit className="w-5 h-5 text-text-secondary group-hover:text-text-primary group-hover:scale-110 transition-all" />
                   </Link>
                   <button
                     onClick={() => handleDeleteJob(job.id)}
-                    className="p-2 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-colors"
+                    className="p-2 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-colors group"
                     title="Delete job"
                   >
-                    <Trash2 className="w-5 h-5 text-red-600" />
+                    <Trash2 className="w-5 h-5 text-red-600 group-hover:scale-110 transition-transform" />
                   </button>
                 </div>
               </div>

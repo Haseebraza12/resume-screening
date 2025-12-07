@@ -654,9 +654,10 @@ def get_ranked_candidates(
             "message": "No ranked candidates yet. Upload resumes to see rankings."
         }
     
-    # Build ranked candidates list
+    # Build ranked candidates list with deduplication
     ranked_candidates = []
     score_distribution = []
+    seen_candidates = set()  # Track unique candidates by name
     
     for rank, match in enumerate(matches, 1):
         resume = match.resume
@@ -667,31 +668,42 @@ def get_ranked_candidates(
         import re
         candidate_name = re.sub(r'^\d{8}_\d{6}_\d+_', '', candidate_name)
         candidate_name = re.sub(r'^\d{8}_\d{6}_', '', candidate_name)
+        candidate_name = re.sub(r'^\d{13}_', '', candidate_name)  # Also remove millisecond timestamps
+        
+        # Normalize name for deduplication
+        normalized_name = candidate_name.lower().strip()
+        
+        # Skip if we've already seen this candidate
+        if normalized_name in seen_candidates:
+            continue
+        
+        seen_candidates.add(normalized_name)
         
         # Get matched skills
         matched_skills = []
         if match.skills_match and isinstance(match.skills_match, dict):
-            matched_skills = match.skills_match.get('matched_skills', [])
-        elif resume.extracted_skills:
-            matched_skills = resume.extracted_skills[:5]  # Top 5 skills
+            matched_skills = match.skills_match.get('matched_skills') or match.skills_match.get('matched') or []
+        
+        if not matched_skills and resume.extracted_skills:
+            matched_skills = resume.extracted_skills  # Show all skills
         
         # Get LLM summary
         summary = match.summary or "Strong candidate based on semantic similarity and skill matching."
         
         ranked_candidates.append({
-            "rank": rank,
-            "candidate_name": candidate_name,
+            "rank": len(ranked_candidates) + 1,  # Use actual rank after deduplication
             "resume_id": resume.id,
-            "match_score": match.match_score,
+            "candidate_name": candidate_name,
+            "match_score": round(match.match_score, 2),
             "matched_skills": matched_skills,
             "summary": summary,
-            "status": match.status
+            "status": match.status or "pending"
         })
         
         # Add to score distribution
         score_distribution.append({
-            "candidate": candidate_name,
-            "score": match.match_score
+            "candidate": candidate_name[:20],  # Truncate for display
+            "score": round(match.match_score, 2)
         })
     
     # Get job details

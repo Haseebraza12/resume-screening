@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     DATABASE_URL: str
     
     # Hugging Face
-    HUGGINGFACEHUB_API_TOKEN: str
+    HUGGINGFACEHUB_API_TOKEN: str = os.getenv("HUGGINGFACEHUB_API_TOKEN", "")
     
     # Vector Store
     VECTOR_STORE: str = "faiss"  # faiss, pinecone, weaviate
@@ -48,10 +48,10 @@ class Settings(BaseSettings):
     MAX_FILE_SIZE_MB: int = 10
     UPLOAD_DIR: str = "./uploads"
     
-    # LLM Configuration
-    LLM_REPO_ID: str = "microsoft/Phi-3-mini-4k-instruct"
-    LLM_MAX_LENGTH: int = 1024
-    LLM_TEMPERATURE: float = 0.1
+    # LLM Settings (for explanations and summaries)
+    LLM_REPO_ID: str = "google/gemma-3-270m-it"  # Updated to Gemma 3 270M
+    LLM_MAX_LENGTH: int = 512
+    LLM_TEMPERATURE: float = 0.7
     
     # Embeddings & RAG Models (Matched with Demo Notebook)
     EMBEDDING_MODEL: str = "sentence-transformers/all-mpnet-base-v2"
@@ -65,9 +65,7 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         case_sensitive = True
+        extra = "ignore"  # Ignore extra fields in .env
 
 
 settings = Settings()
-
-# Create upload directory if it doesn't exist
-os.makedirs(settings.UPLOAD_DIR, exist_ok=True)

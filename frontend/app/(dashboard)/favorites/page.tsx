@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Star, FileText, Trash2 } from 'lucide-react'
+import { Star, FileText, Trash2, Loader2 } from 'lucide-react'
 import { favoritesApi } from '@/lib/api'
 
 interface FavoriteResume {
@@ -50,35 +50,38 @@ export default function FavoritesPage() {
   }
 
   const getScoreColor = (score: number | null) => {
-    if (!score) return 'text-gray-600 bg-gray-50 dark:bg-gray-900/20'
-    if (score >= 70) return 'text-green-600 bg-green-50 dark:bg-green-900/20'
-    if (score >= 50) return 'text-yellow-600 bg-yellow-50 dark:bg-yellow-900/20'
-    return 'text-red-600 bg-red-50 dark:bg-red-900/20'
+    if (!score) return 'text-text-secondary bg-secondary-bg'
+    if (score >= 70) return 'text-green-700 bg-green-100 dark:bg-green-900/30'
+    if (score >= 50) return 'text-yellow-700 bg-yellow-100 dark:bg-yellow-900/30'
+    return 'text-red-700 bg-red-100 dark:bg-red-900/30'
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-screen-cl mx-auto p-6 min-h-screen">
       <div>
-        <h1 className="text-3xl font-bold text-text-light dark:text-text-dark">
+        <h1 className="text-4xl font-bold text-text-primary">
           Favorites
         </h1>
-        <p className="text-text-light/70 dark:text-text-dark/70 mt-2">
+        <p className="text-text-secondary mt-2 text-base">
           Your starred resumes
         </p>
       </div>
 
       {loading ? (
-        <div className="bg-card-light dark:bg-card-dark rounded-lg border border-border-light dark:border-border-dark p-12 text-center">
-          <p className="text-text-light/70 dark:text-text-dark/70">Loading favorites...</p>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <Loader2 className="w-12 h-12 animate-spin text-primary mx-auto mb-4" />
+            <p className="text-text-secondary">Loading favorites...</p>
+          </div>
         </div>
       ) : favorites.length === 0 ? (
-        <div className="bg-card-light dark:bg-card-dark rounded-lg border border-border-light dark:border-border-dark p-12 text-center">
+        <div className="bg-primary-bg rounded-3xl shadow-md p-12 text-center">
           <div className="mx-auto max-w-md space-y-4">
-            <div className="text-6xl">⭐</div>
-            <h2 className="text-xl font-semibold text-text-light dark:text-text-dark">
+            <Star className="w-16 h-16 mx-auto text-accent" />
+            <h2 className="text-xl font-bold text-text-primary">
               No Favorites Yet
             </h2>
-            <p className="text-text-light/70 dark:text-text-dark/70">
+            <p className="text-text-secondary">
               Star your favorite resumes to access them quickly from this page.
             </p>
           </div>
@@ -88,12 +91,12 @@ export default function FavoritesPage() {
           {favorites.map((favorite) => (
             <div
               key={favorite.favorite_id}
-              className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 hover:shadow-md transition-shadow"
+              className="bg-primary-bg rounded-3xl shadow-sm border border-border/30 p-6 hover:shadow-md transition-shadow"
             >
               <div className="flex items-start gap-4">
                 {/* File Icon */}
                 <div className="flex-shrink-0">
-                  <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
+                  <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center">
                     <FileText className="w-6 h-6 text-blue-600 dark:text-blue-400" />
                   </div>
                 </div>
@@ -102,10 +105,10 @@ export default function FavoritesPage() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between gap-4 mb-2">
                     <div>
-                      <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                      <h3 className="text-lg font-bold text-text-primary">
                         {favorite.candidate_name}
                       </h3>
-                      <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                      <p className="text-sm text-text-secondary mt-1">
                         {favorite.file_name}
                       </p>
                     </div>
@@ -124,11 +127,11 @@ export default function FavoritesPage() {
                       <button
                         onClick={() => removeFavorite(favorite.resume_id)}
                         disabled={removingId === favorite.resume_id}
-                        className="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400 transition-colors disabled:opacity-50"
+                        className="p-2 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400 transition-colors disabled:opacity-50"
                         title="Remove from favorites"
                       >
                         {removingId === favorite.resume_id ? (
-                          <div className="w-5 h-5 border-2 border-red-600 border-t-transparent rounded-full animate-spin" />
+                          <Loader2 className="w-5 h-5 animate-spin" />
                         ) : (
                           <Star className="w-5 h-5 fill-yellow-400 text-yellow-400" />
                         )}
@@ -142,13 +145,13 @@ export default function FavoritesPage() {
                       {favorite.skills.slice(0, 8).map((skill, idx) => (
                         <span
                           key={idx}
-                          className="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-xs font-medium rounded"
+                          className="px-2 py-1 bg-secondary-bg text-text-primary border border-border/30 text-xs font-medium rounded-lg"
                         >
                           {skill}
                         </span>
                       ))}
                       {favorite.skills.length > 8 && (
-                        <span className="px-2 py-1 text-gray-500 dark:text-gray-400 text-xs font-medium">
+                        <span className="px-2 py-1 text-text-secondary text-xs font-medium">
                           +{favorite.skills.length - 8} more
                         </span>
                       )}
@@ -156,7 +159,7 @@ export default function FavoritesPage() {
                   )}
 
                   {/* Metadata */}
-                  <div className="flex items-center gap-4 mt-3 text-xs text-gray-500 dark:text-gray-400">
+                  <div className="flex items-center gap-4 mt-3 text-xs text-text-tertiary">
                     <span>Favorited: {new Date(favorite.created_at).toLocaleDateString()}</span>
                     {favorite.resume_created_at && (
                       <span>Uploaded: {new Date(favorite.resume_created_at).toLocaleDateString()}</span>

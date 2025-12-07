@@ -5,25 +5,15 @@ from fastapi.staticfiles import StaticFiles
 import time
 import logging
 from pathlib import Path
+import os
 
 from app.config import settings
 from app.database import engine, Base
-from app.routers import auth, jobs, resumes, analytics, chat, notifications, ranked_resumes, favorites
+from app.routers import auth, jobs, resumes, analytics, chat, notifications, ranked_resumes, favorites, jd_generator, search
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-# Create database tables with error handling
-try:
-    Base.metadata.create_all(bind=engine)
-    logger.info("✅ Database tables created successfully")
-except Exception as e:
-    logger.error(f"❌ Database connection failed: {str(e)}")
-    logger.warning("⚠️  Application will start without database. Install and start PostgreSQL to enable full functionality.")
-    logger.warning("   Run: sudo apt install postgresql postgresql-contrib")
-    logger.warning("   Then: sudo systemctl start postgresql")
-    logger.warning("   Create DB: sudo -u postgres createdb resumematch")
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -57,14 +47,17 @@ else:
     )
 
 # Create uploads directory if it doesn't exist
-uploads_dir = Path("uploads")
-uploads_dir.mkdir(exist_ok=True)
-(uploads_dir / "avatars").mkdir(exist_ok=True)
+uploads_dir = Path(settings.UPLOAD_DIR)
+try:
+    uploads_dir.mkdir(exist_ok=True)
+    (uploads_dir / "avatars").mkdir(exist_ok=True)
+except Exception as e:
+    logger.error(f"❌ Failed to create upload directories: {str(e)}")
 
 # Mount static files for serving uploaded avatars
 try:
-    app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
-    logger.info("✅ Static files mounted successfully at /uploads")
+    app.mount("/uploads", StaticFiles(directory=settings.UPLOAD_DIR), name="uploads")
+    logger.info(f"✅ Static files mounted successfully at /uploads (from {settings.UPLOAD_DIR})")
 except Exception as e:
     logger.warning(f"⚠️  Could not mount static files: {str(e)}")
 
@@ -87,9 +80,11 @@ async def health_check():
         # Try to connect to database
         from app.database import SessionLocal
         db = SessionLocal()
-        db.execute("SELECT 1")
-        db.close()
-        db_status = "connected"
+        try:
+            db.execute("SELECT 1")
+            db_status = "connected"
+        finally:
+            db.close()
     except Exception as e:
         logger.warning(f"Database health check failed: {str(e)}")
     
@@ -112,10 +107,23 @@ async def root():
     }
 
 
-# Startup event to verify RAG service
+# Startup event to verify RAG service and DB
 @app.on_event("startup")
 async def startup_event():
-    """Verify RAG service initialization on startup"""
+    """Initialize services on startup"""
+    
+    # 1. Initialize Database
+    try:
+        Base.metadata.create_all(bind=engine)
+        logger.info("✅ Database tables created successfully")
+    except Exception as e:
+        logger.error(f"❌ Database connection failed: {str(e)}")
+        logger.warning("⚠️  Application will start without database. Install and start PostgreSQL to enable full functionality.")
+        logger.warning("   Run: sudo apt install postgresql postgresql-contrib")
+        logger.warning("   Then: sudo systemctl start postgresql")
+        logger.warning("   Create DB: sudo -u postgres createdb resumematch")
+
+    # 2. Verify RAG Service
     try:
         from app.services.rag_service import rag_service
         logger.info("🤖 Verifying RAG Service...")
@@ -141,6 +149,8 @@ app.include_router(chat.router, prefix=settings.API_V1_PREFIX)
 app.include_router(ranked_resumes.router, prefix=settings.API_V1_PREFIX)
 app.include_router(favorites.router, prefix=settings.API_V1_PREFIX)
 app.include_router(notifications.router)
+app.include_router(jd_generator.router, prefix=settings.API_V1_PREFIX)
+app.include_router(search.router, prefix=settings.API_V1_PREFIX)
 
 
 # Exception handlers
