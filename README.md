@@ -225,26 +225,7 @@ Expected output:
 Results: 8/8 tests passed
 ```
 
-### Manual Testing
-Visit http://localhost:8000/api/docs for interactive Swagger UI
 
----
-
-## 📸 Screenshots
-
-### Landing Page
-Beautiful, responsive landing page with hero section, features, and testimonials.
-
-### Dashboard
-Overview of jobs, resumes, matches, and recent activity.
-
-### Upload Page
-Drag & drop interface for uploading multiple resumes.
-
-### Analytics
-Comprehensive charts showing match statistics and trends.
-
----
 
 ## 🎯 Use Cases
 
